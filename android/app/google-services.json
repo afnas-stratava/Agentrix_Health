@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "368943821492",
+    "project_id": "agentrix-health-70a12",
+    "storage_bucket": "agentrix-health-70a12.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:368943821492:android:8fd5ef129bdb60d8d15de1",
+        "android_client_info": {
+          "package_name": "com.example.agentrix_health"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4OrGJfRcOIfTy1g7yncRXT-HH9NiSHrQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
