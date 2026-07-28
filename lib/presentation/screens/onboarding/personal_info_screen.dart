@@ -7,7 +7,10 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/segmented_control.dart';
+import '../../../core/widgets/selectable_chip.dart';
 import '../../../core/widgets/status_bar_style.dart';
+import '../../../domain/entities/allergy.dart';
+import '../../../domain/entities/cuisine_preference.dart';
 import '../../../domain/entities/gender.dart';
 import '../../../domain/entities/health_goal.dart';
 import '../../providers/app_stage_provider.dart';
@@ -87,6 +90,58 @@ class PersonalInfoScreen extends ConsumerWidget {
                             ),
                         ],
                       ),
+                      const SizedBox(height: AppSpacing.space4),
+                      Text(
+                        'Dietary preference & cuisine history',
+                        style: AppTextStyles.fieldLabel,
+                      ),
+                      const SizedBox(height: AppSpacing.space2),
+                      Wrap(
+                        spacing: AppSpacing.space2,
+                        runSpacing: AppSpacing.space2,
+                        children: [
+                          for (final cuisine in CuisinePreference.values)
+                            SelectableChip(
+                              label: cuisine.label,
+                              selected: profile.cuisines.contains(cuisine),
+                              onTap: () => notifier.toggleCuisine(cuisine),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.space4),
+                      Text(
+                        'Allergies & restrictions',
+                        style: AppTextStyles.fieldLabel,
+                      ),
+                      const SizedBox(height: AppSpacing.space2),
+                      Wrap(
+                        spacing: AppSpacing.space2,
+                        runSpacing: AppSpacing.space2,
+                        children: [
+                          for (final allergy in Allergy.values)
+                            SelectableChip(
+                              label: allergy.label,
+                              selected: profile.allergies.contains(allergy),
+                              selectedBackground: AppColors.accent2_100,
+                              selectedForeground: AppColors.accent2_800,
+                              onTap: () => notifier.toggleAllergy(allergy),
+                            ),
+                          for (final restriction in profile.customRestrictions)
+                            SelectableChip(
+                              label: restriction,
+                              selected: true,
+                              selectedBackground: AppColors.accent2_100,
+                              selectedForeground: AppColors.accent2_800,
+                              onTap: () {},
+                              onRemove: () =>
+                                  notifier.removeCustomRestriction(restriction),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.space2),
+                      _CustomRestrictionInput(
+                        onSubmit: notifier.addCustomRestriction,
+                      ),
                     ],
                   ),
                 ),
@@ -114,6 +169,58 @@ class PersonalInfoScreen extends ConsumerWidget {
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CustomRestrictionInput extends StatefulWidget {
+  const _CustomRestrictionInput({required this.onSubmit});
+
+  final ValueChanged<String> onSubmit;
+
+  @override
+  State<_CustomRestrictionInput> createState() =>
+      _CustomRestrictionInputState();
+}
+
+class _CustomRestrictionInputState extends State<_CustomRestrictionInput> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit(String value) {
+    widget.onSubmit(value);
+    _controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 36),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(AppSpacing.space4),
+      ),
+      child: TextField(
+        controller: _controller,
+        onSubmitted: _submit,
+        style: AppTextStyles.input,
+        cursorColor: AppColors.accent,
+        decoration: InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          hintText: 'Other (e.g. shellfish) — press Enter to add',
+          hintStyle: AppTextStyles.input.copyWith(
+            color: AppColors.text.withValues(alpha: 0.4),
           ),
         ),
       ),
