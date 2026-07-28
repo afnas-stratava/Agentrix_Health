@@ -1,0 +1,35 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    // NOTE: `exactOptionalPropertyTypes` is intentionally off. It makes
+    // `<Foo bar={cond ? x : undefined} />` an error for every optional prop,
+    // which is idiomatic React and would be worked around with casts — a net
+    // loss in type safety. Everything else under `strict` is on.
+    "forceConsistentCasingInFileNames": true,
+    // NOTE: `verbatimModuleSyntax` is deliberately off. The project has no
+    // `"type": "module"` in package.json (Metro/Expo treat it as CommonJS), and
+    // the flag rejects every ESM import in that configuration. `importsNotUsedAsValues`
+    // behaviour is covered by the `import type` style used throughout instead.
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@app/*": ["./app/*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
+  ],
+  "exclude": ["node_modules", "ios", "android", "dist"]
+}
