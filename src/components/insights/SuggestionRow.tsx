@@ -24,9 +24,9 @@ function horizonLabel(days: number): string {
 
 function SuggestionRowBase({ suggestion }: { suggestion: Suggestion }) {
   return (
-    <View className="border-b border-mockup-card-text/8 py-3.5 last:border-b-0">
-      <Text className="text-[14px] font-semibold text-mockup-card-text">{suggestion.title}</Text>
-      <Text className="mt-1 text-[13px] leading-[19px] text-mockup-card-text/65">
+    <View className="border-b border-ink/8 py-3.5 last:border-b-0">
+      <Text className="text-[14px] font-semibold text-ink">{suggestion.title}</Text>
+      <Text className="mt-1 text-[13px] font-sans leading-[19px] text-ink/65">
         {suggestion.detail}
       </Text>
 
@@ -40,7 +40,7 @@ function SuggestionRowBase({ suggestion }: { suggestion: Suggestion }) {
 
         <View className="flex-row items-center gap-1.5">
           <Clock size={12} color={palette.mutedIcon} strokeWidth={2.2} />
-          <Text className="text-[11px] text-mockup-card-text/50">
+          <Text className="text-[11px] font-sans text-ink/50">
             Signal in ~{horizonLabel(suggestion.horizonDays)}
           </Text>
         </View>

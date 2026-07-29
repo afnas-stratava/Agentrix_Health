@@ -95,7 +95,7 @@ export default function LabDetail() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-mockup-bg">
+    <SafeAreaView className="flex-1 bg-canvas">
       <SectionList
         sections={sections}
         keyExtractor={(item, index) => `${item.code ?? item.rawName}-${index}`}
@@ -106,10 +106,10 @@ export default function LabDetail() {
           <View className="mb-6">
             <View className="flex-row items-start justify-between">
               <View className="flex-1 pr-4">
-                <Text className="text-[24px] font-bold leading-7 text-white">
+                <Text className="text-[24px] font-bold leading-7 text-ink">
                   {report.panelName ?? report.fileName ?? 'Lab report'}
                 </Text>
-                <Text className="mt-1.5 text-[13px] text-white/55">
+                <Text className="mt-1.5 text-[13px] font-sans text-muted">
                   {report.labName ? `${report.labName} · ` : ''}
                   {report.collectedAt
                     ? `Collected ${formatDay(toIsoDay(new Date(report.collectedAt)), 'long')}`
@@ -139,7 +139,7 @@ export default function LabDetail() {
 
             {report.status === 'needs-review' && (
               <Card className="mt-4" tone="translucent">
-                <Text className="text-[13px] leading-[19px] text-white/70">
+                <Text className="text-[13px] font-sans leading-[19px] text-muted">
                   Some values were extracted with low confidence. Check anything marked below
                   against the original document before acting on it — a mis-read decimal point is
                   the difference between normal and critical.
@@ -149,14 +149,14 @@ export default function LabDetail() {
           </View>
         }
         renderSectionHeader={({ section }) => (
-          <Text className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wider text-white/50">
+          <Text className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted">
             {section.title}
           </Text>
         )}
         renderItem={({ item, index, section }) => (
           <View
-            className={`bg-mockup-card-bg px-5 ${
-              index === 0 ? 'rounded-t-card pt-1' : 'border-t border-mockup-card-text/8'
+            className={`bg-surface px-5 ${
+              index === 0 ? 'rounded-t-card pt-1' : 'border-t border-ink/8'
             } ${index === section.data.length - 1 ? 'rounded-b-card pb-1' : ''}`}
           >
             <BiomarkerRow biomarker={item} />
@@ -171,7 +171,7 @@ export default function LabDetail() {
               onPress={confirmDelete}
               className="self-center"
             />
-            <Text className="mt-5 text-center text-[11px] leading-4 text-white/30">
+            <Text className="mt-5 text-center text-[11px] font-sans leading-4 text-faint/80">
               Reference intervals shown are the lab&apos;s own where printed, with an
               evidence-based optimal band layered on top. Neither replaces clinical interpretation.
             </Text>

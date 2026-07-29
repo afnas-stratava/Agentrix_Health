@@ -20,16 +20,16 @@ interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
 }
 
 const CONTAINER: Record<Variant, string> = {
-  primary: 'bg-mockup-accent active:opacity-80',
-  secondary: 'bg-white/15 border border-white/20 active:opacity-70',
+  primary: 'bg-accent active:opacity-80',
+  secondary: 'bg-ink/5 border border-hairline active:opacity-70',
   ghost: 'bg-transparent active:opacity-60',
   danger: 'bg-critical/15 border border-critical/40 active:opacity-70',
 };
 
 const LABEL: Record<Variant, string> = {
-  primary: 'text-mockup-card-text',
-  secondary: 'text-white',
-  ghost: 'text-white/80',
+  primary: 'text-ink',
+  secondary: 'text-ink',
+  ghost: 'text-ink/80',
   danger: 'text-critical',
 };
 
@@ -94,24 +94,38 @@ export function Button({
   );
 }
 
-/** Circular icon-only affordance used in headers and card corners. */
+/**
+ * Circular icon-only affordance used in headers and card corners.
+ *
+ * `tone` is retained for call-site compatibility but no longer changes much:
+ * with a light canvas and white cards, both surfaces want the same ink icon.
+ * `onBrand` is the one that genuinely differs — it sits on the green hero.
+ */
 export function IconButton({
   icon: Icon,
   label,
   onPress,
   tone = 'light',
+  busy = false,
   className,
 }: {
   icon: LucideIcon;
   label: string;
   onPress?: () => void;
-  tone?: 'light' | 'onCanvas';
+  tone?: 'light' | 'onCanvas' | 'onBrand';
+  /** Swaps the glyph for a spinner and blocks repeat taps while work is in flight. */
+  busy?: boolean;
   className?: string;
 }) {
+  const onBrand = tone === 'onBrand';
+  const color = onBrand ? palette.onBrand : palette.ink;
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ busy, disabled: busy }}
+      disabled={busy}
       onPress={() => {
         void Haptics.selectionAsync();
         onPress?.();
@@ -119,16 +133,16 @@ export function IconButton({
       hitSlop={8}
       className={cn(
         'h-10 w-10 items-center justify-center rounded-full active:opacity-60',
-        tone === 'light' ? 'bg-black/5' : 'bg-white/12',
+        onBrand ? 'bg-white/15' : 'border border-hairline bg-surface',
         className,
       )}
     >
       <View pointerEvents="none">
-        <Icon
-          size={19}
-          color={tone === 'light' ? palette.cardText : palette.onBg}
-          strokeWidth={2.1}
-        />
+        {busy ? (
+          <ActivityIndicator size="small" color={color} />
+        ) : (
+          <Icon size={18} color={color} strokeWidth={2.1} />
+        )}
       </View>
     </Pressable>
   );

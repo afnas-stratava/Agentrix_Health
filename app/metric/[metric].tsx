@@ -69,12 +69,12 @@ export default function MetricDetail() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-mockup-bg">
+    <SafeAreaView className="flex-1 bg-canvas">
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 48 }}>
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-4">
-            <Text className="text-[26px] font-bold text-white">{meta.label}</Text>
-            <Text className="mt-1 text-[13px] text-white/50">
+            <Text className="text-[26px] font-bold text-ink">{meta.label}</Text>
+            <Text className="mt-1 text-[13px] font-sans text-muted">
               {values.length} days · {present.length} with data
             </Text>
           </View>
@@ -84,14 +84,14 @@ export default function MetricDetail() {
         <Card className="mt-6">
           <View className="flex-row items-end justify-between">
             <View>
-              <Text className="text-[11px] font-semibold uppercase tracking-wider text-mockup-card-text/50">
+              <Text className="text-[11px] font-semibold uppercase tracking-wider text-ink/50">
                 Latest
               </Text>
               <View className="mt-1 flex-row items-baseline gap-1">
-                <Text className="text-metric font-bold text-mockup-card-text">
+                <Text className="text-metric font-bold text-ink">
                   {format(stats?.latest)}
                 </Text>
-                <Text className="text-sm text-mockup-card-text/45">{meta.unit}</Text>
+                <Text className="text-sm font-sans text-ink/45">{meta.unit}</Text>
               </View>
             </View>
             <DeltaBadge
@@ -113,33 +113,33 @@ export default function MetricDetail() {
 
           {firstDay && lastDay && (
             <View className="mt-2 flex-row justify-between">
-              <Text className="text-[10px] text-mockup-card-text/40">{formatDay(firstDay)}</Text>
-              <Text className="text-[10px] text-mockup-card-text/40">{formatDay(lastDay)}</Text>
+              <Text className="text-[10px] font-sans text-ink/40">{formatDay(firstDay)}</Text>
+              <Text className="text-[10px] font-sans text-ink/40">{formatDay(lastDay)}</Text>
             </View>
           )}
         </Card>
 
         <View className="mt-3 flex-row gap-3">
           <Card className="flex-1">
-            <Text className="text-[11px] font-semibold uppercase tracking-wider text-mockup-card-text/50">
+            <Text className="text-[11px] font-semibold uppercase tracking-wider text-ink/50">
               7-day mean
             </Text>
-            <Text className="mt-1.5 text-metric-sm font-bold text-mockup-card-text">
+            <Text className="mt-1.5 text-metric-sm font-bold text-ink">
               {format(stats?.recentMean)}
             </Text>
           </Card>
           <Card className="flex-1">
-            <Text className="text-[11px] font-semibold uppercase tracking-wider text-mockup-card-text/50">
+            <Text className="text-[11px] font-semibold uppercase tracking-wider text-ink/50">
               28-day baseline
             </Text>
-            <Text className="mt-1.5 text-metric-sm font-bold text-mockup-card-text">
+            <Text className="mt-1.5 text-metric-sm font-bold text-ink">
               {format(stats?.baselineMean)}
             </Text>
           </Card>
         </View>
 
         <Card className="mt-3">
-          <Text className="text-[11px] font-semibold uppercase tracking-wider text-mockup-card-text/50">
+          <Text className="text-[11px] font-semibold uppercase tracking-wider text-ink/50">
             Distribution
           </Text>
           <View className="mt-3 flex-row justify-between">
@@ -151,10 +151,10 @@ export default function MetricDetail() {
               { label: 'SD', value: present.length > 1 ? stdDev(present) : null },
             ].map((item) => (
               <View key={item.label} className="items-center">
-                <Text className="text-[10px] uppercase tracking-wider text-mockup-card-text/40">
+                <Text className="text-[10px] font-sans uppercase tracking-wider text-ink/40">
                   {item.label}
                 </Text>
-                <Text className="mt-1 text-[15px] font-bold text-mockup-card-text">
+                <Text className="mt-1 text-[15px] font-bold text-ink">
                   {format(item.value)}
                 </Text>
               </View>
@@ -162,13 +162,13 @@ export default function MetricDetail() {
           </View>
         </Card>
 
-        <Text className="mb-3 mt-7 text-[11px] font-semibold uppercase tracking-wider text-white/50">
+        <Text className="mb-3 mt-7 text-[11px] font-semibold uppercase tracking-wider text-muted">
           What moves this metric
         </Text>
 
         {correlations.length === 0 ? (
           <Card>
-            <Text className="text-[13px] leading-[19px] text-mockup-card-text/60">
+            <Text className="text-[13px] font-sans leading-[19px] text-ink/60">
               No statistically meaningful relationship found yet. Correlations need at least 10
               paired days and a p-value under 0.05 before we will show them — weak links on thin
               data are worse than none.
@@ -178,7 +178,7 @@ export default function MetricDetail() {
           correlations.map(({ metric, label, result }) => (
             <Card key={`${metric}-${label}`} className="mb-3">
               <View className="flex-row items-center justify-between">
-                <Text className="flex-1 text-[14px] font-semibold text-mockup-card-text">
+                <Text className="flex-1 text-[14px] font-semibold text-ink">
                   {label}
                 </Text>
                 <Badge
@@ -192,20 +192,20 @@ export default function MetricDetail() {
                   }
                 />
               </View>
-              <Text className="mt-2 text-[12px] leading-[18px] text-mockup-card-text/60">
+              <Text className="mt-2 text-[12px] font-sans leading-[18px] text-ink/60">
                 {METRIC_META[metric].label}{' '}
                 {result!.direction === 'positive' ? 'rises with' : 'moves against'} your{' '}
                 {meta.short.toLowerCase()} across {result!.n} paired days
                 {result!.lagDays > 0 ? ` at a ${result!.lagDays}-day lag` : ''}.
               </Text>
-              <Text className="mt-1.5 font-mono text-[11px] text-mockup-card-text/40">
+              <Text className="mt-1.5 font-mono text-[11px] text-ink/40">
                 r = {result!.r} · p = {result!.p < 0.001 ? '<0.001' : result!.p} · n = {result!.n}
               </Text>
             </Card>
           ))
         )}
 
-        <Text className="mt-4 text-center text-[11px] leading-4 text-white/30">
+        <Text className="mt-4 text-center text-[11px] font-sans leading-4 text-faint/80">
           Correlation is not causation. These relationships describe your own history and can be
           confounded by anything not measured here.
         </Text>

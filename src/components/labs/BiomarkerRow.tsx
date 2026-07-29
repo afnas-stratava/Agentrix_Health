@@ -63,10 +63,10 @@ function BiomarkerRowBase({ biomarker }: { biomarker: Biomarker }) {
     <View className="py-3.5">
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
-          <Text className="text-[15px] font-semibold text-mockup-card-text" numberOfLines={1}>
+          <Text className="text-[15px] font-semibold text-ink" numberOfLines={1}>
             {biomarker.displayName}
           </Text>
-          <Text className="mt-0.5 text-[11px] text-mockup-card-text/45" numberOfLines={1}>
+          <Text className="mt-0.5 text-[11px] font-sans text-ink/45" numberOfLines={1}>
             {formatRange(biomarker)}
           </Text>
         </View>
@@ -76,14 +76,14 @@ function BiomarkerRowBase({ biomarker }: { biomarker: Biomarker }) {
             <Text style={{ color }} className="text-lg font-bold">
               {biomarker.value}
             </Text>
-            <Text className="text-[11px] text-mockup-card-text/45">{biomarker.unit}</Text>
+            <Text className="text-[11px] font-sans text-ink/45">{biomarker.unit}</Text>
           </View>
           <Badge label={FLAG_LABEL[biomarker.flag]} color={color} className="mt-1" />
         </View>
       </View>
 
       {/* Reference-interval track */}
-      <View className="mt-3 h-2 w-full overflow-hidden rounded-pill bg-mockup-card-text/8">
+      <View className="mt-3 h-2 w-full overflow-hidden rounded-pill bg-ink/8">
         <View
           className="absolute top-0 h-2 rounded-pill bg-normal/25"
           style={{ left: `${geometry.normal.left}%`, width: `${geometry.normal.width}%` }}
@@ -100,14 +100,14 @@ function BiomarkerRowBase({ biomarker }: { biomarker: Biomarker }) {
             backgroundColor: color,
             transform: [{ translateX: -5 }],
           }}
-          className="absolute -top-0.5 h-3 w-2.5 rounded-full border-2 border-mockup-card-bg"
+          className="absolute -top-0.5 h-3 w-2.5 rounded-full border-2 border-surface"
         />
       </View>
 
       {lowConfidence && (
         <View className="mt-2 flex-row items-center gap-1.5">
           <AlertTriangle size={12} color={palette.borderline} strokeWidth={2.2} />
-          <Text className="text-[11px] text-borderline">
+          <Text className="text-[11px] font-sans text-borderline">
             Extracted at {Math.round(biomarker.confidence * 100)}% confidence — tap the report to
             confirm
           </Text>

@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { cn } from '@/lib/cn';
+import { palette } from '@/theme/colors';
 
 interface BadgeProps {
   label: string;
@@ -43,7 +44,7 @@ export function DeltaBadge({
 
   const rounded = Math.round(deltaPct);
   if (rounded === 0) {
-    return <Badge label="Steady" color="#8E8DC9" />;
+    return <Badge label="Steady" color={palette.faint} />;
   }
 
   const isUp = rounded > 0;
@@ -52,7 +53,7 @@ export function DeltaBadge({
   return (
     <Badge
       label={`${isUp ? '▲' : '▼'} ${Math.abs(rounded)}%`}
-      color={isGood ? '#10b981' : '#f97316'}
+      color={isGood ? palette.optimal : palette.abnormal}
     />
   );
 }

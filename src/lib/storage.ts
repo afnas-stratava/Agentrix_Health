@@ -38,4 +38,7 @@ export const StorageKeys = {
   labs: 'vitals.labs.v1',
   health: 'vitals.health.v1',
   insights: 'vitals.insights.v1',
+  profile: 'vitals.profile.v1',
+  nutrition: 'vitals.nutrition.v1',
+  connections: 'vitals.connections.v1',
 } as const;

@@ -34,9 +34,9 @@ function LabReportCardBase({ report }: { report: LabReport }) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${report.panelName ?? 'Lab report'}, ${status.label}`}
-        className="mb-3 flex-row items-center gap-4 rounded-card bg-mockup-card-bg p-4 active:opacity-80"
+        className="mb-3 flex-row items-center gap-4 rounded-card bg-surface p-4 active:opacity-80"
       >
-        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-mockup-card-text/8">
+        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-ink/8">
           {isBusy ? (
             <ActivityIndicator size="small" color={palette.cardText} />
           ) : report.status === 'failed' ? (
@@ -49,17 +49,17 @@ function LabReportCardBase({ report }: { report: LabReport }) {
         </View>
 
         <View className="flex-1">
-          <Text className="text-[15px] font-semibold text-mockup-card-text" numberOfLines={1}>
+          <Text className="text-[15px] font-semibold text-ink" numberOfLines={1}>
             {report.panelName ?? report.fileName ?? 'Lab report'}
           </Text>
-          <Text className="mt-0.5 text-xs text-mockup-card-text/50" numberOfLines={1}>
+          <Text className="mt-0.5 text-xs font-sans text-ink/50" numberOfLines={1}>
             {report.labName ? `${report.labName} · ${dateLabel}` : dateLabel}
           </Text>
 
           <View className="mt-2 flex-row items-center gap-2">
             <Badge label={status.label} color={status.color} />
             {report.status === 'ready' || report.status === 'needs-review' ? (
-              <Text className="text-[11px] text-mockup-card-text/45">
+              <Text className="text-[11px] font-sans text-ink/45">
                 {report.biomarkers.length} markers
                 {flagged > 0 ? ` · ${flagged} outside optimal` : ''}
               </Text>
@@ -67,7 +67,7 @@ function LabReportCardBase({ report }: { report: LabReport }) {
           </View>
 
           {report.status === 'failed' && report.error && (
-            <Text className="mt-1.5 text-[11px] text-critical" numberOfLines={2}>
+            <Text className="mt-1.5 text-[11px] font-sans text-critical" numberOfLines={2}>
               {report.error}
             </Text>
           )}

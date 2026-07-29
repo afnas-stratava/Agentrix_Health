@@ -30,13 +30,13 @@ export function Skeleton({ className }: { className?: string }) {
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <Animated.View style={style} className={cn('rounded-xl bg-white/20', className)} />
+    <Animated.View style={style} className={cn('rounded-xl bg-ink/8', className)} />
   );
 }
 
 export function MetricCardSkeleton() {
   return (
-    <View className="flex-1 rounded-card bg-white/10 p-4">
+    <View className="flex-1 rounded-card bg-ink/5 p-4">
       <Skeleton className="h-3 w-16" />
       <Skeleton className="mt-4 h-8 w-20" />
       <Skeleton className="mt-3 h-3 w-12" />
@@ -46,7 +46,7 @@ export function MetricCardSkeleton() {
 
 export function InsightCardSkeleton() {
   return (
-    <View className="rounded-card bg-white/10 p-5">
+    <View className="rounded-card bg-ink/5 p-5">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="mt-4 h-5 w-full" />
       <Skeleton className="mt-2 h-5 w-3/4" />

@@ -27,21 +27,21 @@ export function EmptyState({
       <View
         className={
           isCanvas
-            ? 'h-16 w-16 items-center justify-center rounded-full bg-white/12'
-            : 'h-16 w-16 items-center justify-center rounded-full bg-mockup-card-text/8'
+            ? 'h-16 w-16 items-center justify-center rounded-full bg-ink/5'
+            : 'h-16 w-16 items-center justify-center rounded-full bg-ink/8'
         }
       >
         <Icon size={26} color={isCanvas ? palette.accent : palette.cardText} strokeWidth={1.9} />
       </View>
 
       <Text
-        className={`mt-5 text-center text-lg font-semibold ${isCanvas ? 'text-white' : 'text-mockup-card-text'}`}
+        className={`mt-5 text-center text-lg font-semibold ${isCanvas ? 'text-ink' : 'text-ink'}`}
       >
         {title}
       </Text>
       <Text
-        className={`mt-2 max-w-[300px] text-center text-sm leading-5 ${
-          isCanvas ? 'text-white/65' : 'text-mockup-card-text/60'
+        className={`mt-2 max-w-[300px] text-center text-sm font-sans leading-5 ${
+          isCanvas ? 'text-muted' : 'text-ink/60'
         }`}
       >
         {body}

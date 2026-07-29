@@ -46,6 +46,18 @@ With `EXPO_PUBLIC_API_BASE_URL` empty the app runs entirely on-device:
 The two are designed to agree, so the iron, inflammation and vitamin-D rules light up and every
 screen is developable and screenshot-stable without a backend or a paired Apple Watch.
 
+Nutrition, the brief and dish ranking need no backend at all — they are deterministic and run
+entirely on device. Dining falls back to curated venues without a Places key.
+
+### Demo persona
+
+Settings › Demo data loads a complete example user: a wellness panel whose ferritin clears the
+lab's own floor but sits below the optimal band, a fortnight of vegetarian meals, hydration, and a
+logged cycle history placing them mid-luteal with a measured 29-day cycle. It is coherent on
+purpose — the low ferritin, the synthetic provider's HRV decline, the iron-poor week of eating and
+the luteal phase all point at the same story. `__tests__/demo-persona.test.ts` asserts that story
+still falls out of the data, so a seeded fixture cannot quietly stop producing findings.
+
 ---
 
 ## Architecture
@@ -54,8 +66,12 @@ screen is developable and screenshot-stable without a backend or a paired Apple 
 app/                              expo-router tree — routing only, no business logic
 ├── _layout.tsx                   providers, root stack, modal registration
 ├── index.tsx                     hydration gate → onboarding or dashboard
-├── onboarding/                   welcome → reference-range profile → HealthKit priming
-├── (tabs)/                       today · insights · labs · settings
+├── onboarding/                   welcome → sex → body → goals → diet → HealthKit priming
+├── (tabs)/                       today · food · insights · labs · (settings, off-bar)
+├── brief.tsx                     the composed morning plan
+├── dining.tsx                    nearby restaurants, ranked dish-first
+├── profile.tsx                   full profile editor incl. cycle logging
+├── meal/log.tsx                  meal logging — photo, search, portions
 ├── upload.tsx                    lab ingestion sheet (modal)
 ├── metric/[metric].tsx           metric detail + correlations (modal)
 └── lab/[id].tsx                  report detail, grouped by panel (modal)
@@ -66,9 +82,15 @@ src/
 │   ├── health/                   HealthKit adapter, synthetic provider, daily aggregation
 │   ├── labs/                     pickers, parser client, reference-range table
 │   ├── correlation/              statistics kernel, rule catalogue, engine, readiness
-│   └── insights/                 the hook that joins telemetry + labs and runs the engine
-├── components/                   ui/ · health/ · labs/ · insights/ · navigation/
-├── store/                        zustand slices (settings, labs, health)
+│   ├── insights/                 the hook that joins telemetry + labs and runs the engine
+│   ├── profile/                  resolves the declared profile + demographics into one object
+│   ├── cycle/                    menstrual phase model and phase-specific guidance
+│   ├── nutrition/                food table, targets, plate suggestions, weekly patterns
+│   ├── brief/                    the morning-brief composer
+│   ├── dining/                   Places client, fixture venues, dish-level ranking
+│   └── demo/                     seeded persona for demos and screenshots
+├── components/                   ui/ · health/ · labs/ · insights/ · nutrition/ · navigation/
+├── store/                        zustand slices (settings, labs, health, profile, nutrition)
 ├── lib/                          api, query client, storage, date, env, logger
 └── theme/                        hex mirrors of the Tailwind palette (SVG icons need values)
 ```
@@ -122,6 +144,50 @@ number.
 
 ---
 
+## Nutrition, the brief, and dining
+
+Three subsystems sit on top of the correlation engine. All three are **deterministic** — the same
+inputs always compose the same output, everything works with the network off, and there is no
+model that can invent a biomarker the user does not have. For anything that touches blood results
+that is the right trade: the prose is assembled from clauses rather than written fresh, but it can
+be audited line by line.
+
+### Targets (`src/features/nutrition/targets.ts`)
+
+Mifflin–St Jeor BMR, then total expenditure from **measured** wearable active energy where a week
+of it exists and the declared activity multiplier only as a fallback — the UI says which. Protein
+is set per kilo of bodyweight and goes *up* in a deficit, carbohydrate share tightens for declared
+dysglycaemia, and the luteal phase adds a 5% expenditure premium. There is a hard calorie floor no
+goal can push through.
+
+### Weekly patterns (`src/features/nutrition/patterns.ts`)
+
+Counts days, never averages them — three clean days and four heavy ones average out to "fine",
+which is exactly the conclusion worth avoiding. Days with no log are excluded from denominators
+rather than counted as zero-intake, and below three logged days it reports sparseness instead of
+inventing findings.
+
+### The brief (`src/features/brief/compose.ts`)
+
+Composes blood work + last night's recovery + cycle phase + the week's eating into one plan.
+Training intensity starts from readiness and is only ever *capped* by sleep, cycle phase and
+urgent lab findings — one good night never unlocks a hard session on a suppressed HRV. Food focus
+resolves in priority order: flagged biomarker → weekly pattern → cycle phase → standing goal. Every
+brief carries a `drivers` list (what shaped it) and a `caveats` list (what it could not see).
+
+### Dining (`src/features/dining/`)
+
+Google Places supplies venues; it does **not** supply menus, and nothing here pretends otherwise.
+Dishes come from the same food table the logger uses, filtered by the venue's cuisine, which is
+what makes the macros real — the numbers behind a recommendation are the numbers written to the
+food log if the user taps to log it. Allergens and diet pattern are hard filters that apply
+identically in cheat mode; restrictions down-rank rather than exclude.
+
+Places failures are non-fatal at every step: no key, no network, exhausted quota or an empty result
+all fall through to the curated venues in `fixtures.ts`, disclosed in the UI as example venues.
+
+---
+
 ## HealthKit notes
 
 Three things about HealthKit that shaped the implementation:
@@ -168,7 +234,7 @@ Biomarker flagging is deliberately **client-side** even when the server supplies
 ## Tests
 
 ```bash
-npm test        # 62 tests
+npm test        # 153 tests
 npm run typecheck
 ```
 
@@ -182,6 +248,19 @@ Coverage is concentrated where the risk is — the pure logic that produces heal
   at unknown units.
 - `engine.test.ts` — that rules fire only when both signals agree, severity escalation, staleness
   discounting, and readiness orientation.
+- `nutrition-targets.test.ts` — the Mifflin–St Jeor constants, measured-over-estimated expenditure,
+  the protein floor rising in a deficit, the luteal premium, and the calorie floor no goal breaks.
+- `cycle-phase.test.ts` — that ovulation lands at length−14 rather than a fixed day 14, that a
+  skipped log cannot distort the measured length, and that a stale log yields *no* phase rather
+  than a rolled-over one.
+- `nutrition-patterns.test.ts` — that findings count days instead of averaging them, that a single
+  banana is not a logged day, and that no water logged produces silence, not an accusation.
+- `dining-rank.test.ts` — the hard dietary filters, including that **cheat mode is not an allergen
+  exemption**, and that a venue with nothing edible is dropped rather than recommended.
+- `brief-compose.test.ts` — that sleep and cycle phase can only cap intensity, that a low ferritin
+  leads on iron, that diet filters reach the recommended examples, and that composition is
+  deterministic.
+- `demo-persona.test.ts` — that the seeded demo still tells the story it is supposed to tell.
 
 Two of these caught real bugs during development: `enrichBiomarker` was not idempotent (it
 relabelled app-supplied ranges as lab-supplied on re-run, and it re-runs on every render of the
@@ -192,6 +271,26 @@ baseline was told their readiness was "Low".
 
 ## Known gaps / deliberate choices
 
+- **Meal photos are not analysed.** There is no vision model in this build. `recognize.ts` narrows
+  the food table down to what a given user plausibly ate at a given meal — from their cuisines,
+  diet, time of day and logging history — and the user confirms in two taps. The photo is captured
+  and attached to the entry, but the macros come from that confirmation, not from the image. The UI
+  says so verbatim (`SUGGESTION_BASIS`) and never claims to have identified anything. Dropping in a
+  real vision endpoint means implementing one function against the existing `PlateSuggestion[]`
+  shape; every call site downstream already treats confidence below 1 as "needs confirming".
+- **Restaurant menus are not read.** Places returns names, ratings, types and coordinates — never
+  dish lists. Dish recommendations are cuisine-typical, which every card discloses.
+- **The Places key ships in the bundle.** There is no backend to proxy it, so it **must** be
+  restricted in the Cloud console to this bundle ID and the Places API alone. See `.env.example`.
+- **Cycle data is logged in-app, not read from HealthKit.** iOS records menstrual flow, but
+  `react-native-health` exposes no menstrual category at all, so there is nothing to read. Phase is
+  inferred from logged period starts, with cycle length *measured* from the user's own history
+  (median gap, so one skipped log cannot distort it) once two are on file.
+- **Nothing pulls results from a phone number.** iOS gives no programmatic SMS access. The paths
+  that could work are a share-sheet extension, an inbound WhatsApp Business number, or a
+  forwarding address — none of which are built. Gmail import *is* built and works.
+- **Gmail is limited to test users.** `gmail.readonly` is a Google Restricted scope; until OAuth
+  verification and a CASA assessment complete, only accounts added as Test Users can connect.
 - **Tab bar is a custom component, not `unstable-native-tabs`.** `src/components/navigation/PillTabBar.tsx`
   implements the floating pill bar with a centre FAB, which the stock tab bar clips. Navigation
   semantics still come from React Navigation, so deep links, state restoration and the Android back

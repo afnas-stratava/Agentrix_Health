@@ -8,71 +8,107 @@ import { DeltaBadge } from '@/components/ui/Badge';
 import { Sparkline } from './Sparkline';
 import { palette } from '@/theme/colors';
 
-interface MetricCardProps {
-  stats: MetricStats;
-  /** Compact tiles sit two-up in a grid; wide ones span the row. */
-  variant?: 'tile' | 'wide';
-}
-
 function formatValue(key: MetricKey, value: number | null): string {
   if (value == null) return '—';
-  const { precision } = METRIC_META[key];
   if (key === 'steps') return Math.round(value).toLocaleString();
-  return value.toFixed(precision);
+  return value.toFixed(METRIC_META[key].precision);
 }
 
-function MetricCardBase({ stats, variant = 'tile' }: MetricCardProps) {
-  const meta = METRIC_META[stats.key];
-  const goodDirection = METRIC_POLARITY[stats.key] === 'higher-is-better' ? 'up' : 'down';
+/**
+ * Colour follows the *trend*, not the absolute value: a good number that is
+ * falling is more actionable than a mediocre one holding steady.
+ */
+function trendColor(stats: MetricStats): string {
+  if (stats.deltaPct == null || Math.abs(stats.deltaPct) < 2) return palette.mutedIcon;
+  const rising = stats.deltaPct > 0;
+  const higherIsBetter = METRIC_POLARITY[stats.key] === 'higher-is-better';
+  return rising === higherIsBetter ? palette.optimal : palette.abnormal;
+}
 
-  // Colour the trend, not the value: a "good" absolute number that is falling
-  // is more actionable than a mediocre one holding steady.
-  const trendColor =
-    stats.deltaPct == null || Math.abs(stats.deltaPct) < 2
-      ? palette.mutedIcon
-      : (stats.deltaPct > 0) === (goodDirection === 'up')
-        ? palette.optimal
-        : palette.abnormal;
+interface MetricCardProps {
+  stats: MetricStats;
+  /**
+   * `primary` is for the two metrics that actually drive readiness (HRV and
+   * resting HR) — full sparkline and baseline context. `compact` is a
+   * four-up strip for the supporting signals, where a value and a direction
+   * is all the space earns.
+   */
+  variant?: 'primary' | 'compact';
+}
+
+function MetricCardBase({ stats, variant = 'primary' }: MetricCardProps) {
+  const meta = METRIC_META[stats.key];
+  const color = trendColor(stats);
+  const value = formatValue(stats.key, stats.latest);
+
+  const a11yLabel = `${meta.label}, ${value} ${meta.unit}${
+    stats.deltaPct != null ? `, ${Math.round(stats.deltaPct)} percent versus baseline` : ''
+  }`;
+
+  if (variant === 'compact') {
+    return (
+      <Link href={{ pathname: '/metric/[metric]', params: { metric: stats.key } }} asChild>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={a11yLabel}
+          className="flex-1 rounded-2xl bg-surface px-2.5 py-3 active:opacity-80"
+        >
+          <Text
+            className="text-[10px] font-semibold uppercase tracking-wider text-ink/45"
+            numberOfLines={1}
+          >
+            {meta.short}
+          </Text>
+
+          <Text className="mt-1.5 text-[17px] font-bold leading-5 text-ink" numberOfLines={1}>
+            {value}
+          </Text>
+
+          <View className="mt-1 flex-row items-center gap-1">
+            <View style={{ backgroundColor: color }} className="h-1.5 w-1.5 rounded-full" />
+            <Text className="text-[10px] font-sans text-ink/45" numberOfLines={1}>
+              {stats.deltaPct == null
+                ? meta.unit || '—'
+                : `${stats.deltaPct > 0 ? '+' : ''}${Math.round(stats.deltaPct)}%`}
+            </Text>
+          </View>
+        </Pressable>
+      </Link>
+    );
+  }
 
   return (
     <Link href={{ pathname: '/metric/[metric]', params: { metric: stats.key } }} asChild>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${meta.label}, ${formatValue(stats.key, stats.latest)} ${meta.unit}`}
-        className={`rounded-card bg-mockup-card-bg p-4 active:opacity-80 ${
-          variant === 'tile' ? 'flex-1' : 'w-full'
-        }`}
+        accessibilityLabel={a11yLabel}
+        className="flex-1 rounded-card bg-surface p-4 active:opacity-80"
       >
-        <View className="flex-row items-center justify-between">
-          <Text className="text-[11px] font-semibold uppercase tracking-wider text-mockup-card-text/55">
+        <View className="flex-row items-start justify-between">
+          <Text className="text-[11px] font-semibold uppercase tracking-wider text-ink/50">
             {meta.short}
           </Text>
-          <DeltaBadge deltaPct={stats.deltaPct} goodDirection={goodDirection} />
-        </View>
-
-        <View className="mt-3 flex-row items-baseline gap-1">
-          <Text className="text-metric-sm font-bold text-mockup-card-text">
-            {formatValue(stats.key, stats.latest)}
-          </Text>
-          {meta.unit.length > 0 && (
-            <Text className="text-xs font-medium text-mockup-card-text/50">{meta.unit}</Text>
-          )}
-        </View>
-
-        <View className="mt-3">
-          <Sparkline
-            values={stats.values.slice(-30)}
-            width={variant === 'tile' ? 130 : 300}
-            height={34}
-            color={trendColor}
-            filled
+          <DeltaBadge
+            deltaPct={stats.deltaPct}
+            goodDirection={METRIC_POLARITY[stats.key] === 'higher-is-better' ? 'up' : 'down'}
           />
         </View>
 
-        <Text className="mt-2 text-[11px] text-mockup-card-text/45">
+        <View className="mt-2.5 flex-row items-baseline gap-1">
+          <Text className="text-metric-sm font-bold text-ink">{value}</Text>
+          {meta.unit.length > 0 && (
+            <Text className="text-xs font-medium text-ink/45">{meta.unit}</Text>
+          )}
+        </View>
+
+        <View className="mt-2.5">
+          <Sparkline values={stats.values.slice(-30)} width={132} height={32} color={color} filled />
+        </View>
+
+        <Text className="mt-2 text-[10px] font-sans text-ink/40" numberOfLines={1}>
           {stats.baselineMean != null
-            ? `28-day baseline ${formatValue(stats.key, stats.baselineMean)}${meta.unit ? ` ${meta.unit}` : ''}`
-            : 'Building your baseline'}
+            ? `baseline ${formatValue(stats.key, stats.baselineMean)}`
+            : 'building baseline'}
         </Text>
       </Pressable>
     </Link>

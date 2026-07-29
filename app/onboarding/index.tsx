@@ -34,20 +34,20 @@ export default function Welcome() {
       <View style={styles.glow} pointerEvents="none" />
 
       <View className="flex-1 justify-center px-8">
-        <Text className="text-[40px] font-bold leading-[46px] text-white">
+        <Text className="text-[40px] font-bold leading-[46px] text-ink">
           Your labs.{'\n'}Your wearable.{'\n'}
-          <Text style={{ color: palette.accent }}>One picture.</Text>
+          <Text className="font-sans" style={{ color: palette.accent }}>One picture.</Text>
         </Text>
 
         <View className="mt-10">
           {POINTS.map(({ icon: Icon, title, body }) => (
             <View key={title} className="mb-6 flex-row gap-4">
-              <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-2xl bg-white/12">
-                <Icon size={19} color={palette.accent} strokeWidth={2} />
+              <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-2xl bg-ink/5">
+                <Icon size={19} color={palette.brand} strokeWidth={2} />
               </View>
               <View className="flex-1">
-                <Text className="text-[15px] font-semibold text-white">{title}</Text>
-                <Text className="mt-1 text-[13px] leading-[19px] text-white/60">{body}</Text>
+                <Text className="text-[15px] font-semibold text-ink">{title}</Text>
+                <Text className="mt-1 text-[13px] font-sans leading-[19px] text-muted">{body}</Text>
               </View>
             </View>
           ))}
@@ -56,7 +56,7 @@ export default function Welcome() {
 
       <View className="px-8 pb-6">
         <Button label="Get started" size="lg" fullWidth onPress={() => router.push('/onboarding/profile')} />
-        <Text className="mt-4 text-center text-[11px] leading-4 text-white/35">
+        <Text className="mt-4 text-center text-[11px] font-sans leading-4 text-faint/80">
           Vitals is not a medical device and does not diagnose. Always discuss results with a
           qualified clinician.
         </Text>
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH * 1.3,
     height: SCREEN_WIDTH * 1.3,
     borderRadius: SCREEN_WIDTH * 0.65,
-    backgroundColor: '#7170C4',
+    backgroundColor: '#CDEBB8',
     opacity: 0.35,
   },
 });

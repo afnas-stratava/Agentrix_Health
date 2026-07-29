@@ -46,10 +46,10 @@ export default function Permissions() {
       </View>
 
       <View className="flex-1 px-8 pt-8">
-        <Text className="text-[28px] font-bold leading-8 text-white">
+        <Text className="text-[28px] font-bold leading-8 text-ink">
           Connect Apple Health
         </Text>
-        <Text className="mt-3 text-[13px] leading-5 text-white/60">
+        <Text className="mt-3 text-[13px] font-sans leading-5 text-muted">
           We read five metrics, and we only read — Vitals requests no permission to write anything
           back to Health.
         </Text>
@@ -57,20 +57,20 @@ export default function Permissions() {
         <View className="mt-8">
           {SCOPES.map(({ icon: Icon, label, why }) => (
             <View key={label} className="mb-4 flex-row items-center gap-3.5">
-              <View className="h-10 w-10 items-center justify-center rounded-2xl bg-white/12">
-                <Icon size={18} color={palette.accent} strokeWidth={2} />
+              <View className="h-10 w-10 items-center justify-center rounded-2xl bg-ink/5">
+                <Icon size={18} color={palette.brand} strokeWidth={2} />
               </View>
               <View className="flex-1">
-                <Text className="text-[14px] font-semibold text-white">{label}</Text>
-                <Text className="text-[12px] text-white/45">{why}</Text>
+                <Text className="text-[14px] font-semibold text-ink">{label}</Text>
+                <Text className="text-[12px] font-sans text-faint">{why}</Text>
               </View>
             </View>
           ))}
         </View>
 
-        <View className="mt-4 flex-row items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <View className="mt-4 flex-row items-start gap-3 rounded-2xl border border-hairline bg-ink/4 p-4">
           <Lock size={16} color={palette.optimal} strokeWidth={2.1} />
-          <Text className="flex-1 text-[12px] leading-[17px] text-white/60">
+          <Text className="flex-1 text-[12px] font-sans leading-[17px] text-muted">
             Health data is processed entirely on this device. It is never uploaded, and the
             correlation engine runs locally.
           </Text>

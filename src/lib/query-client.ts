@@ -41,6 +41,21 @@ export const queryKeys = {
     list: () => [...queryKeys.labs.all, 'list'] as const,
     detail: (id: string) => [...queryKeys.labs.all, 'detail', id] as const,
   },
+  dining: {
+    all: ['dining'] as const,
+    /**
+     * Coordinates are rounded to ~100 m before they enter the key: a user
+     * shifting a few metres must not invalidate the cache and re-bill a
+     * Places call.
+     */
+    nearby: (latitude: number | null, longitude: number | null) =>
+      [
+        ...queryKeys.dining.all,
+        'nearby',
+        latitude == null ? null : Math.round(latitude * 1000) / 1000,
+        longitude == null ? null : Math.round(longitude * 1000) / 1000,
+      ] as const,
+  },
   insights: {
     all: ['insights'] as const,
     computed: (labIds: string[], windowDays: number) =>

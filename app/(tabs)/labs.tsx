@@ -33,37 +33,44 @@ export default function LabsScreen() {
   }, [reports, sex]);
 
   return (
-    <SafeAreaView className="flex-1 bg-mockup-bg" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
-        <View className="flex-row items-start justify-between px-6 pt-2">
+        <View className="flex-row items-start justify-between gap-3 px-6 pt-2">
           <View className="flex-1">
-            <Text className="text-3xl font-bold text-white">Labs</Text>
-            <Text className="mt-1.5 text-[13px] text-white/55">
+            <Text className="text-3xl font-bold text-ink">Labs</Text>
+            <Text className="mt-1.5 text-[13px] font-sans text-muted">
               {reports.length === 0
                 ? 'Upload a PDF or photo of a blood report'
                 : `${reports.length} report${reports.length === 1 ? '' : 's'} on file`}
             </Text>
           </View>
 
-          <Button
-            label="Add"
-            icon={Plus}
-            size="sm"
-            onPress={() => router.push('/upload')}
-            className="mt-1"
-          />
+          <View className="flex-row items-start gap-2">
+            <Button
+              label="Import"
+              variant="secondary"
+              size="sm"
+              onPress={() => router.push('/gmail-import')}
+            />
+            <Button
+              label="Add"
+              icon={Plus}
+              size="sm"
+              onPress={() => router.push('/upload')}
+            />
+          </View>
         </View>
 
         {flagged.length > 0 && (
           <View className="mt-6 px-6">
-            <Text className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-white/50">
+            <Text className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
               Outside your optimal band
             </Text>
             <Card>
               {flagged.map((biomarker, index) => (
                 <View
                   key={`${biomarker.code ?? biomarker.rawName}`}
-                  className={index > 0 ? 'border-t border-mockup-card-text/8' : ''}
+                  className={index > 0 ? 'border-t border-ink/8' : ''}
                 >
                   <BiomarkerRow biomarker={biomarker} />
                 </View>
@@ -74,7 +81,7 @@ export default function LabsScreen() {
 
         <View className="mt-6 px-6">
           {reports.length > 0 && (
-            <Text className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-white/50">
+            <Text className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
               All reports
             </Text>
           )}
@@ -83,12 +90,27 @@ export default function LabsScreen() {
             <EmptyState
               icon={FlaskConical}
               title="No blood work yet"
-              body="Add a lab report as a PDF or a photo of the printout. We extract the biomarkers and line them up against your daily telemetry."
-              actionLabel="Add your first report"
-              onAction={() => router.push('/upload')}
+              body="Connect Gmail and we will find the lab reports already sitting in your inbox — or add one manually. Either way we extract every biomarker and line it up against your daily telemetry."
+              actionLabel="Import from Gmail"
+              onAction={() => router.push('/gmail-import')}
             />
           ) : (
-            reports.map((report) => <LabReportCard key={report.id} report={report} />)
+            <View className="space-y-3">
+              {reports.map((report) => (
+                <LabReportCard key={report.id} report={report} />
+              ))}
+            </View>
+          )}
+
+          {reports.length > 0 && (
+            <Button
+              label="Add another report"
+              icon={Plus}
+              size="sm"
+              fullWidth
+              onPress={() => router.push('/upload')}
+              className="mt-4"
+            />
           )}
         </View>
       </ScrollView>

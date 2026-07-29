@@ -57,20 +57,20 @@ function InsightCardBase({ insight, onDismiss, defaultExpanded = false }: Insigh
   const severityColor = SEVERITY_COLOR[insight.severity];
 
   return (
-    <View className="mb-3 overflow-hidden rounded-card bg-mockup-card-bg">
+    <View className="mb-3 overflow-hidden rounded-card bg-surface">
       {/* Severity rail — a colour cue that survives greyscale accessibility modes
           because it is paired with the text badge below. */}
       <View style={{ backgroundColor: severityColor }} className="h-1 w-full" />
 
       <View className="p-5">
         <View className="flex-row items-start gap-3">
-          <View className="h-10 w-10 items-center justify-center rounded-2xl bg-mockup-card-text/8">
+          <View className="h-10 w-10 items-center justify-center rounded-2xl bg-ink/8">
             <Icon size={19} color={palette.cardText} strokeWidth={2} />
           </View>
 
           <View className="flex-1">
             <Badge label={SEVERITY_LABEL[insight.severity]} color={severityColor} />
-            <Text className="mt-2 text-[17px] font-bold leading-6 text-mockup-card-text">
+            <Text className="mt-2 text-[17px] font-bold leading-6 text-ink">
               {insight.title}
             </Text>
           </View>
@@ -81,14 +81,14 @@ function InsightCardBase({ insight, onDismiss, defaultExpanded = false }: Insigh
               accessibilityLabel="Dismiss insight"
               hitSlop={10}
               onPress={() => onDismiss(insight.id)}
-              className="h-7 w-7 items-center justify-center rounded-full bg-mockup-card-text/8 active:opacity-60"
+              className="h-7 w-7 items-center justify-center rounded-full bg-ink/8 active:opacity-60"
             >
               <X size={13} color={palette.cardText} strokeWidth={2.4} />
             </Pressable>
           )}
         </View>
 
-        <Text className="mt-3 text-sm leading-[21px] text-mockup-card-text/70">
+        <Text className="mt-3 text-sm font-sans leading-[21px] text-ink/70">
           {insight.summary}
         </Text>
 
@@ -103,7 +103,7 @@ function InsightCardBase({ insight, onDismiss, defaultExpanded = false }: Insigh
                   style={{ borderColor: `${color}55` }}
                   className="flex-row items-center gap-1.5 rounded-pill border bg-white px-2.5 py-1"
                 >
-                  <Text className="text-[11px] font-medium text-mockup-card-text/60">
+                  <Text className="text-[11px] font-medium text-ink/60">
                     {biomarker.displayName}
                   </Text>
                   <Text style={{ color }} className="text-[11px] font-bold">
@@ -116,9 +116,9 @@ function InsightCardBase({ insight, onDismiss, defaultExpanded = false }: Insigh
         )}
 
         {insight.evidence.telemetryNote && (
-          <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-mockup-card-text/5 px-3 py-2.5">
+          <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-ink/5 px-3 py-2.5">
             <Activity size={14} color={palette.mutedIcon} strokeWidth={2.2} />
-            <Text className="flex-1 text-[12px] leading-4 text-mockup-card-text/60">
+            <Text className="flex-1 text-[12px] font-sans leading-4 text-ink/60">
               {insight.evidence.telemetryNote}
             </Text>
           </View>
@@ -130,7 +130,7 @@ function InsightCardBase({ insight, onDismiss, defaultExpanded = false }: Insigh
           onPress={() => setExpanded((v) => !v)}
           className="mt-4 flex-row items-center gap-1.5 active:opacity-60"
         >
-          <Text className="text-[13px] font-semibold text-mockup-card-text">
+          <Text className="text-[13px] font-semibold text-ink">
             {expanded ? 'Hide details' : `What to do (${insight.suggestions.length})`}
           </Text>
           {expanded ? (
@@ -141,20 +141,20 @@ function InsightCardBase({ insight, onDismiss, defaultExpanded = false }: Insigh
         </Pressable>
 
         {expanded && (
-          <View className="mt-3 border-t border-mockup-card-text/10 pt-1">
+          <View className="mt-3 border-t border-ink/10 pt-1">
             {insight.suggestions.map((suggestion) => (
               <SuggestionRow key={suggestion.id} suggestion={suggestion} />
             ))}
 
             {insight.evidence.correlations.length > 0 && (
-              <View className="mt-3 rounded-xl bg-mockup-card-text/5 p-3">
-                <Text className="text-[11px] font-semibold uppercase tracking-wider text-mockup-card-text/45">
+              <View className="mt-3 rounded-xl bg-ink/5 p-3">
+                <Text className="text-[11px] font-semibold uppercase tracking-wider text-ink/45">
                   Found in your own data
                 </Text>
                 {insight.evidence.correlations.map((correlation) => (
                   <Text
                     key={`${correlation.metric}-${correlation.lagDays}`}
-                    className="mt-1.5 text-[12px] leading-4 text-mockup-card-text/65"
+                    className="mt-1.5 text-[12px] font-sans leading-4 text-ink/65"
                   >
                     {describeCorrelation(
                       correlation.r,
@@ -177,7 +177,7 @@ function InsightCardBase({ insight, onDismiss, defaultExpanded = false }: Insigh
                     className="mt-1.5 flex-row items-center gap-1.5 active:opacity-60"
                   >
                     <ExternalLink size={12} color={palette.mutedIcon} strokeWidth={2.2} />
-                    <Text className="text-[11px] text-mockup-card-text/50 underline">
+                    <Text className="text-[11px] font-sans text-ink/50 underline">
                       {citation.label}
                     </Text>
                   </Pressable>

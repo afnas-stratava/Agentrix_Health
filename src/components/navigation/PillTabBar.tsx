@@ -3,19 +3,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import Svg, { Path } from 'react-native-svg';
-import { Activity, FlaskConical, Home, Settings } from 'lucide-react-native';
+import { Activity, FlaskConical, Home, Plus, UtensilsCrossed } from 'lucide-react-native';
+import { palette } from '@/theme/colors';
 
-const ACTIVE = '#FCE285';
-const INACTIVE = '#A2A1E6';
-const BAR = '#403F89';
-const FAB_INK = '#2D2B60';
-
+/**
+ * Only the four routes named here get a slot in the bar. `settings` is a tab
+ * route but is intentionally omitted — five icons plus the centre action reads
+ * as cramped, and settings is always one tap away from the Today header.
+ */
 const ICONS = {
   today: Home,
+  food: UtensilsCrossed,
   insights: Activity,
   labs: FlaskConical,
-  settings: Settings,
 } as const;
 
 type TabName = keyof typeof ICONS;
@@ -25,12 +25,15 @@ function isTabName(name: string): name is TabName {
 }
 
 /**
- * Floating pill tab bar with a centre action button.
+ * Floating tab bar with a centre action button.
  *
  * Built as a custom `tabBar` rather than styling the default one because the
- * FAB has to break out above the bar's bounds — something the stock tab bar
+ * action button breaks out above the bar's bounds — something the stock tab bar
  * clips. Routing still goes through React Navigation, so deep links, state
  * restoration and the Android back button all behave normally.
+ *
+ * The focused tab reveals its label; the others stay icon-only. That keeps the
+ * bar quiet while still naming where you are.
  */
 export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -71,31 +74,34 @@ export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps
         accessibilityLabel={label}
         onPress={onPress}
         onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-        className="flex-1 items-center justify-center active:opacity-70"
+        className="flex-1 items-center justify-center rounded-2xl py-2 active:opacity-70"
       >
         <View
-          className={`h-12 w-12 items-center justify-center rounded-2xl ${
-            isFocused ? 'bg-mockup-accent/20' : ''
-          }`}
+          className={isFocused ? 'items-center justify-center rounded-full bg-brand-50 p-2' : 'items-center justify-center rounded-full p-2'}
         >
           <Icon
-            size={22}
-            color={isFocused ? ACTIVE : INACTIVE}
-            strokeWidth={isFocused ? 2.6 : 2.2}
+            size={21}
+            color={isFocused ? palette.brand : palette.faint}
+            strokeWidth={isFocused ? 2.6 : 2.1}
           />
         </View>
+        {isFocused && (
+          <Text className="mt-1 text-[9px] font-bold uppercase tracking-wide text-brand-600">
+            {label}
+          </Text>
+        )}
       </Pressable>
     );
   };
 
   return (
     <View
-      className="absolute bottom-0 w-full px-6"
-      style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      className="absolute bottom-0 w-full px-5"
+      style={{ paddingBottom: Math.max(insets.bottom, 14), paddingTop: 8, overflow: 'visible' }}
       pointerEvents="box-none"
     >
       <View
-        className="h-20 w-full flex-row items-center justify-between rounded-[30px] px-2"
+        className="h-[72px] w-full flex-row items-center justify-between rounded-[28px] bg-surface px-2"
         style={styles.bar}
       >
         {groups[0]?.map(renderTab)}
@@ -103,54 +109,52 @@ export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps
         <View style={styles.fabWrapper}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Add a lab report"
+            accessibilityLabel="Log a meal"
+            accessibilityHint="Opens meal logging. Lab reports are uploaded from the Labs tab."
             onPress={() => {
               void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              router.push('/upload');
+              // Meal logging is the several-times-a-day action; uploading a lab
+              // report is a monthly one and lives on the Labs tab.
+              router.push('/meal/log');
             }}
             style={styles.fab}
           >
-            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={FAB_INK} strokeWidth={3} strokeLinecap="round">
-              <Path d="M12 5v14M5 12h14" />
-            </Svg>
+            <Plus size={24} color={palette.ink} strokeWidth={3} />
           </Pressable>
         </View>
 
         {groups[1]?.map(renderTab)}
       </View>
-
-      {/* Screen-reader-only label; the icons alone carry no text. */}
-      <Text accessibilityElementsHidden importantForAccessibility="no-hide-descendants" className="hidden">
-        Main navigation
-      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   bar: {
-    backgroundColor: BAR,
-    shadowColor: '#252456',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    // Soft lift rather than an outline — the light theme reads as floating
+    // cards, so a hard border here would fight everything else on screen.
+    shadowColor: palette.brandDeep,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
     shadowRadius: 16,
-    elevation: 8,
+    elevation: 10,
   },
   fabWrapper: {
-    width: 68,
-    height: 68,
+    width: 62,
+    height: 62,
     justifyContent: 'center',
     alignItems: 'center',
-    top: -24,
+    top: -20,
   },
   fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: ACTIVE,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: palette.accent,
     justifyContent: 'center',
     alignItems: 'center',
+    // A surface-coloured ring punches the button visually out of the bar.
     borderWidth: 5,
-    borderColor: BAR,
+    borderColor: palette.surface,
   },
 });

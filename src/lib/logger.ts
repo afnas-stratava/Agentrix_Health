@@ -1,6 +1,6 @@
 import { env } from './env';
 
-type Scope = 'health' | 'labs' | 'engine' | 'api' | 'store';
+type Scope = 'health' | 'labs' | 'engine' | 'api' | 'store' | 'nutrition' | 'dining';
 
 const isDev = env.appEnv === 'development';
 

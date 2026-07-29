@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
@@ -32,6 +32,9 @@ export function Sparkline({
   strokeWidth = 2,
   showLastPoint = true,
 }: SparklineProps) {
+  // Declared before the early return below so the hook order stays stable.
+  const instanceId = useId();
+
   const { segments, lastPoint, areaPath } = useMemo(() => {
     const present = values.filter((v): v is number => v != null && Number.isFinite(v));
 
@@ -96,7 +99,11 @@ export function Sparkline({
     return <View style={{ width, height }} />;
   }
 
-  const gradientId = `spark-${color.replace('#', '')}`;
+  // Keyed on the instance, not the colour: two tiles trending the same way
+  // share a colour, and `react-native-svg` resolves `url(#id)` against a
+  // process-wide registry — so a colour-derived id makes the second sparkline
+  // pick up the first one's gradient.
+  const gradientId = `spark${instanceId.replace(/:/g, '')}`;
 
   return (
     <Svg width={width} height={height}>

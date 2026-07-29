@@ -32,7 +32,7 @@ export default function InsightsScreen() {
   const urgentCount = insights.filter((i) => i.severity === 'urgent').length;
 
   return (
-    <SafeAreaView className="flex-1 bg-mockup-bg" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 140 }}
@@ -41,17 +41,29 @@ export default function InsightsScreen() {
         }
       >
         <View className="px-6 pt-2">
-          <Text className="text-3xl font-bold text-white">Insights</Text>
-          <Text className="mt-1.5 text-[13px] leading-5 text-white/55">
-            {hasLabData
-              ? 'Where your blood work and your daily telemetry agree. Nothing here is a diagnosis.'
-              : 'Patterns found in your telemetry. Add a blood report to unlock the correlations.'}
-          </Text>
+          <View className="flex-row items-start justify-between gap-3">
+            <View className="flex-1">
+              <Text className="text-3xl font-bold text-ink">Insights</Text>
+              <Text className="mt-1.5 text-[13px] font-sans leading-5 text-muted">
+                {hasLabData
+                  ? 'Where your blood work and your daily telemetry agree. Nothing here is a diagnosis.'
+                  : 'Patterns found in your telemetry. Add a blood report to unlock the correlations.'}
+              </Text>
+            </View>
+
+            <Button
+              label="Refresh"
+              icon={RotateCcw}
+              variant="secondary"
+              size="sm"
+              onPress={onRefresh}
+            />
+          </View>
 
           {urgentCount > 0 && (
             <View className="mt-4 flex-row items-center gap-2.5 rounded-2xl border border-critical/30 bg-critical/12 px-4 py-3">
               <View className="h-2 w-2 rounded-full bg-critical" />
-              <Text className="flex-1 text-[12px] leading-4 text-white/85">
+              <Text className="flex-1 text-[12px] font-sans leading-4 text-ink/80">
                 {urgentCount === 1
                   ? 'One finding is worth taking to a clinician.'
                   : `${urgentCount} findings are worth taking to a clinician.`}
@@ -93,13 +105,14 @@ export default function InsightsScreen() {
               variant="secondary"
               size="sm"
               icon={RotateCcw}
+              fullWidth
               onPress={clearDismissed}
             />
           </View>
         )}
 
         {insights.length > 0 && (
-          <Text className="mt-6 px-8 text-center text-[11px] leading-4 text-white/35">
+          <Text className="mt-6 px-8 text-center text-[11px] font-sans leading-4 text-faint/80">
             These are statistical associations in your own data, not medical advice. Discuss any
             change to medication or treatment with a clinician.
           </Text>

@@ -40,6 +40,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         'Take a photo of a printed lab report so we can extract your biomarkers.',
       NSPhotoLibraryUsageDescription:
         'Attach a saved photo or scan of your lab report.',
+      NSLocationWhenInUseUsageDescription:
+        'We use your location only while the app is open, to find restaurants near you that fit your health profile. It is never stored or sent anywhere.',
       ITSAppUsesNonExemptEncryption: false,
       UIBackgroundModes: ['fetch', 'processing'],
     },
@@ -97,6 +99,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
+    // OAuth *client* ID — public by design. The client secret is held only by
+    // the backend, which performs the authorization-code exchange.
+    googleClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',
+    // Restricted in the Cloud console to this bundle ID + the Places API.
+    placesApiKey: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ?? '',
     eas: {
       projectId: process.env.EAS_PROJECT_ID ?? '00000000-0000-0000-0000-000000000000',
     },

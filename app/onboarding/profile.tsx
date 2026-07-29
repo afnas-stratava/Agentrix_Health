@@ -40,10 +40,10 @@ export default function Profile() {
       </View>
 
       <View className="flex-1 px-8 pt-8">
-        <Text className="text-[28px] font-bold leading-8 text-white">
+        <Text className="text-[28px] font-bold leading-8 text-ink">
           Which reference ranges should we use?
         </Text>
-        <Text className="mt-3 text-[13px] leading-5 text-white/60">
+        <Text className="mt-3 text-[13px] font-sans leading-5 text-muted">
           Lab reference intervals differ by biological sex. This is only used to flag your results
           correctly — it is stored on your device and never sent anywhere.
         </Text>
@@ -58,20 +58,20 @@ export default function Profile() {
                 accessibilityState={{ selected: isSelected }}
                 onPress={() => setSelected(option.value)}
                 className={`mb-3 rounded-card border p-4 active:opacity-80 ${
-                  isSelected ? 'border-mockup-accent bg-white/12' : 'border-white/15 bg-white/5'
+                  isSelected ? 'border-accent bg-ink/5' : 'border-hairline bg-ink/4'
                 }`}
               >
                 <View className="flex-row items-center gap-3">
                   <View
                     className={`h-5 w-5 items-center justify-center rounded-full border-2 ${
-                      isSelected ? 'border-mockup-accent' : 'border-white/30'
+                      isSelected ? 'border-accent' : 'border-hairline'
                     }`}
                   >
-                    {isSelected && <View className="h-2.5 w-2.5 rounded-full bg-mockup-accent" />}
+                    {isSelected && <View className="h-2.5 w-2.5 rounded-full bg-accent" />}
                   </View>
-                  <Text className="text-[15px] font-semibold text-white">{option.label}</Text>
+                  <Text className="text-[15px] font-semibold text-ink">{option.label}</Text>
                 </View>
-                <Text className="ml-8 mt-1 text-[12px] leading-4 text-white/50">{option.hint}</Text>
+                <Text className="ml-8 mt-1 text-[12px] font-sans leading-4 text-muted">{option.hint}</Text>
               </Pressable>
             );
           })}
@@ -85,7 +85,7 @@ export default function Profile() {
           fullWidth
           onPress={() => {
             setSex(selected);
-            router.push('/onboarding/permissions');
+            router.push('/onboarding/body');
           }}
         />
       </View>

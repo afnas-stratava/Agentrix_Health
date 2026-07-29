@@ -191,7 +191,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({ activity, index, scr
     >
       {/* Resting card */}
       <View
-        className="h-full w-full flex-col items-center justify-between rounded-[24px] border border-white/20 px-4 py-8"
+        className="h-full w-full flex-col items-center justify-between rounded-[24px] border border-hairline px-4 py-8"
         style={{ backgroundColor: '#F4F5FC' }}
       >
         <Text className="text-2xl font-bold tracking-tight" style={{ color: INK, opacity: 0.6 }}>

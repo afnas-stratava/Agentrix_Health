@@ -17,8 +17,15 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="today" options={{ title: 'Today' }} />
+      <Tabs.Screen name="food" options={{ title: 'Food' }} />
       <Tabs.Screen name="insights" options={{ title: 'Insights' }} />
       <Tabs.Screen name="labs" options={{ title: 'Labs' }} />
+      {/*
+        Settings stays a tab route so `/(tabs)/settings` resolves everywhere,
+        but it is deliberately absent from `PillTabBar`'s icon map: with five
+        icons the bar gets cramped, and settings already has a permanent home
+        in the Today header.
+      */}
       <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
     </Tabs>
   );

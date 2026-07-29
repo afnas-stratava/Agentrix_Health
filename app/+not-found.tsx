@@ -9,7 +9,7 @@ export default function NotFound() {
   return (
     <>
       <Stack.Screen options={{ title: 'Not found' }} />
-      <View className="flex-1 items-center justify-center bg-mockup-bg">
+      <View className="flex-1 items-center justify-center bg-canvas">
         <EmptyState
           icon={Compass}
           title="This screen doesn't exist"
