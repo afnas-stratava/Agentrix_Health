@@ -35,14 +35,14 @@ class Correlation {
   final CorrelationDirection direction;
 
   Map<String, dynamic> toJson() => {
-        'metric': metric.wireName,
-        'r': r,
-        'p': p,
-        'n': n,
-        'lagDays': lagDays,
-        'strength': strength.name,
-        'direction': direction.name,
-      };
+    'metric': metric.wireName,
+    'r': r,
+    'p': p,
+    'n': n,
+    'lagDays': lagDays,
+    'strength': strength.name,
+    'direction': direction.name,
+  };
 }
 
 enum InsightSeverity { info, watch, action, urgent }

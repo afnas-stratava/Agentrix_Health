@@ -4,17 +4,22 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
-enum AppButtonVariant { primary, secondary, ghost }
+enum AppButtonVariant { primary, secondary, ghost, danger }
 
-/// Button matching the design system's `.btn` family (`.btn-primary`,
-/// `.btn-secondary`, `.btn-ghost`), with `.btn-block` (full width, left
-/// aligned) and `.btn-icon` (fixed square, icon only) modifiers.
+enum AppButtonSize { sm, md, lg }
+
+/// Button mirroring the React Native `Button` in `src/components/ui/Button.tsx`.
+///
+/// Every variant is a pill. `primary` is the lime accent carrying **ink** —
+/// the accent is never paired with white text — and `AppButton.icon` is the
+/// circular icon-only affordance used in headers and card corners.
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
     required this.label,
     this.onPressed,
     this.variant = AppButtonVariant.primary,
+    this.size = AppButtonSize.md,
     this.leading,
     this.block = false,
     this.foregroundColor,
@@ -27,6 +32,7 @@ class AppButton extends StatelessWidget {
     required Widget this.leading,
     this.onPressed,
     this.variant = AppButtonVariant.secondary,
+    this.size = AppButtonSize.md,
     this.foregroundColor,
     this.backgroundColor,
     this.borderColor,
@@ -36,6 +42,7 @@ class AppButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final AppButtonVariant variant;
+  final AppButtonSize size;
   final Widget? leading;
   final bool block;
   final Color? foregroundColor;
@@ -44,34 +51,70 @@ class AppButton extends StatelessWidget {
 
   bool get _iconOnly => label.isEmpty && leading != null;
 
+  /// Heights and horizontal padding from the RN `SIZE` map.
+  double get _height => switch (size) {
+    AppButtonSize.sm => 36,
+    AppButtonSize.md => 48,
+    AppButtonSize.lg => 56,
+  };
+
+  double get _paddingX => switch (size) {
+    AppButtonSize.sm => 14,
+    AppButtonSize.md => 20,
+    AppButtonSize.lg => 24,
+  };
+
+  double get _labelSize => switch (size) {
+    AppButtonSize.sm => 13,
+    AppButtonSize.md => 15,
+    AppButtonSize.lg => 16,
+  };
+
+  double get _iconSize => switch (size) {
+    AppButtonSize.sm => 15,
+    AppButtonSize.md => 18,
+    AppButtonSize.lg => 20,
+  };
+
   @override
   Widget build(BuildContext context) {
     final disabled = onPressed == null;
     final bg = backgroundColor ?? _defaultBackground();
     final fg = foregroundColor ?? _defaultForeground();
     final border = borderColor ?? _defaultBorder();
+    final radius = BorderRadius.circular(AppRadius.pill);
 
     final content = _iconOnly
         ? Center(
             child: IconTheme(
-              data: IconThemeData(color: fg, size: 16),
+              data: IconThemeData(color: fg, size: 18),
               child: leading!,
             ),
           )
         : Row(
             mainAxisSize: block ? MainAxisSize.max : MainAxisSize.min,
-            mainAxisAlignment: block
-                ? MainAxisAlignment.start
-                : MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (leading != null) ...[
                 IconTheme(
-                  data: IconThemeData(color: fg, size: 16),
+                  data: IconThemeData(color: fg, size: _iconSize),
                   child: leading!,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpacing.space2),
               ],
-              Text(label, style: AppTextStyles.button.copyWith(color: fg)),
+              // Loose flex so a long label (or a large accessibility text
+              // scale) ellipsises inside the pill instead of overflowing it.
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.button.copyWith(
+                    color: fg,
+                    fontSize: _labelSize,
+                  ),
+                ),
+              ),
             ],
           );
 
@@ -79,22 +122,19 @@ class AppButton extends StatelessWidget {
       opacity: disabled ? 0.45 : 1,
       child: Material(
         color: bg,
-        borderRadius: BorderRadius.circular(AppSpacing.space4),
+        borderRadius: radius,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(AppSpacing.space4),
+          borderRadius: radius,
           child: Container(
-            width: _iconOnly ? 36 : null,
-            height: _iconOnly ? 36 : null,
+            width: _iconOnly ? 40 : null,
+            height: _iconOnly ? 40 : _height,
             padding: _iconOnly
                 ? null
-                : EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space3 * 1.2,
-                    vertical: AppSpacing.space2,
-                  ),
-            alignment: block ? Alignment.centerLeft : Alignment.center,
+                : EdgeInsets.symmetric(horizontal: _paddingX),
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppSpacing.space4),
+              borderRadius: radius,
               border: border != null ? Border.all(color: border) : null,
             ),
             child: content,
@@ -109,21 +149,26 @@ class AppButton extends StatelessWidget {
   Color _defaultBackground() {
     switch (variant) {
       case AppButtonVariant.primary:
-        return AppColors.accent;
+        return AppColors.lime;
       case AppButtonVariant.secondary:
+        // `bg-ink/5` over the canvas.
+        return AppColors.ink.withValues(alpha: 0.05);
       case AppButtonVariant.ghost:
         return Colors.transparent;
+      case AppButtonVariant.danger:
+        return AppColors.critical.withValues(alpha: 0.15);
     }
   }
 
   Color _defaultForeground() {
     switch (variant) {
       case AppButtonVariant.primary:
-        return AppColors.bg;
       case AppButtonVariant.secondary:
-        return AppColors.text;
+        return AppColors.ink;
       case AppButtonVariant.ghost:
-        return AppColors.accent;
+        return AppColors.ink.withValues(alpha: 0.8);
+      case AppButtonVariant.danger:
+        return AppColors.critical;
     }
   }
 
@@ -133,7 +178,9 @@ class AppButton extends StatelessWidget {
       case AppButtonVariant.ghost:
         return null;
       case AppButtonVariant.secondary:
-        return AppColors.divider;
+        return AppColors.hairline;
+      case AppButtonVariant.danger:
+        return AppColors.critical.withValues(alpha: 0.4);
     }
   }
 }

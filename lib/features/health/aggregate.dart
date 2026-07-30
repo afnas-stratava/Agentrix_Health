@@ -58,7 +58,11 @@ IsoDay _sleepDayFor(SleepSample sample) {
 }
 
 class _ResolvedInterval {
-  _ResolvedInterval({required this.start, required this.end, required this.stage});
+  _ResolvedInterval({
+    required this.start,
+    required this.end,
+    required this.stage,
+  });
 
   final int start;
   int end;
@@ -81,16 +85,20 @@ class _Span {
 /// segment, and each segment is credited to the single highest-priority stage
 /// covering it. Total minutes can therefore never exceed wall-clock time.
 List<_ResolvedInterval> _resolveTimeline(List<SleepSample> samples) {
-  final staged = samples.where((s) => s.value != SleepStageValue.inBed).toList();
+  final staged = samples
+      .where((s) => s.value != SleepStageValue.inBed)
+      .toList();
   if (staged.isEmpty) return [];
 
   final boundaries = <int>{};
   final spans = staged
-      .map((s) => _Span(
-            start: DateTime.parse(s.startDate).millisecondsSinceEpoch,
-            end: DateTime.parse(s.endDate).millisecondsSinceEpoch,
-            stage: s.value,
-          ))
+      .map(
+        (s) => _Span(
+          start: DateTime.parse(s.startDate).millisecondsSinceEpoch,
+          end: DateTime.parse(s.endDate).millisecondsSinceEpoch,
+          stage: s.value,
+        ),
+      )
       .toList();
 
   for (final span in spans) {
@@ -110,7 +118,8 @@ List<_ResolvedInterval> _resolveTimeline(List<SleepSample> samples) {
     SleepStageValue? winner;
     for (final span in spans) {
       if (span.start <= start && span.end >= end) {
-        if (winner == null || _stagePriority[span.stage]! > _stagePriority[winner]!) {
+        if (winner == null ||
+            _stagePriority[span.stage]! > _stagePriority[winner]!) {
           winner = span.stage;
         }
       }
@@ -132,14 +141,17 @@ List<_ResolvedInterval> _resolveTimeline(List<SleepSample> samples) {
 /// Total wall-clock minutes covered by the union of the given samples, so
 /// overlapping in-bed records from two devices are not double-counted.
 double _unionMinutes(List<SleepSample> samples) {
-  final spans = samples
-      .map((s) => (
-            start: DateTime.parse(s.startDate).millisecondsSinceEpoch,
-            end: DateTime.parse(s.endDate).millisecondsSinceEpoch,
-          ))
-      .where((s) => s.end > s.start)
-      .toList()
-    ..sort((a, b) => a.start.compareTo(b.start));
+  final spans =
+      samples
+          .map(
+            (s) => (
+              start: DateTime.parse(s.startDate).millisecondsSinceEpoch,
+              end: DateTime.parse(s.endDate).millisecondsSinceEpoch,
+            ),
+          )
+          .where((s) => s.end > s.start)
+          .toList()
+        ..sort((a, b) => a.start.compareTo(b.start));
 
   var total = 0;
   var cursorStart = -1;
@@ -190,14 +202,16 @@ SleepSummary? _summariseSleep(List<SleepSample> samples) {
   final asleepMinutes = deep + rem + core + unspecified;
   if (asleepMinutes <= 0) return null;
 
-  final inBedSamples =
-      samples.where((s) => s.value == SleepStageValue.inBed).toList();
+  final inBedSamples = samples
+      .where((s) => s.value == SleepStageValue.inBed)
+      .toList();
   final inBedMinutes = inBedSamples.isNotEmpty
       ? math.max(_unionMinutes(inBedSamples), asleepMinutes)
       : asleepMinutes + awake;
 
-  final asleepIntervals =
-      timeline.where((i) => i.stage != SleepStageValue.awake).toList();
+  final asleepIntervals = timeline
+      .where((i) => i.stage != SleepStageValue.awake)
+      .toList();
   final bedtime = asleepIntervals.isNotEmpty
       ? DateTime.fromMillisecondsSinceEpoch(asleepIntervals.first.start)
       : null;
@@ -213,7 +227,9 @@ SleepSummary? _summariseSleep(List<SleepSample> samples) {
     unspecifiedMinutes: _round1(unspecified),
     asleepMinutes: _round1(asleepMinutes),
     inBedMinutes: _round1(inBedMinutes),
-    efficiency: inBedMinutes > 0 ? _clamp01(asleepMinutes / inBedMinutes) : null,
+    efficiency: inBedMinutes > 0
+        ? _clamp01(asleepMinutes / inBedMinutes)
+        : null,
     bedtime: bedtime?.toUtc().toIso8601String(),
     wakeTime: wakeTime?.toUtc().toIso8601String(),
   );
@@ -239,7 +255,9 @@ List<DailySnapshot> aggregateDailySnapshots(
 
   final sleepByDay = <IsoDay, List<SleepSample>>{};
   for (final sample in raw.sleep) {
-    sleepByDay.putIfAbsent(_sleepDayFor(sample), () => <SleepSample>[]).add(sample);
+    sleepByDay
+        .putIfAbsent(_sleepDayFor(sample), () => <SleepSample>[])
+        .add(sample);
   }
 
   return enumerateDays(from, to).map((day) {
@@ -255,16 +273,27 @@ List<DailySnapshot> aggregateDailySnapshots(
       day: day,
       // Apple reports a daily *average* SDNN; taking the max would flatter
       // recovery on nights with one good reading.
-      hrv: _roundOrNull(_meanOrNull(hrvSamples.map((s) => s.value).toList()), 1),
+      hrv: _roundOrNull(
+        _meanOrNull(hrvSamples.map((s) => s.value).toList()),
+        1,
+      ),
       // Resting HR is already a daily derived value; averaging duplicates from
       // multiple sources is the correct reconciliation.
-      restingHeartRate:
-          _roundOrNull(_meanOrNull(rhrSamples.map((s) => s.value).toList()), 0),
+      restingHeartRate: _roundOrNull(
+        _meanOrNull(rhrSamples.map((s) => s.value).toList()),
+        0,
+      ),
       sleep: _summariseSleep(sleepSamples),
-      activeEnergy:
-          _roundOrNull(_sumOrNull(energySamples.map((s) => s.value).toList()), 0),
-      steps: _roundOrNull(_sumOrNull(stepSamples.map((s) => s.value).toList()), 0),
-      hasWearableSource: allSources.any((s) => _isWearable(s.sourceName)) ||
+      activeEnergy: _roundOrNull(
+        _sumOrNull(energySamples.map((s) => s.value).toList()),
+        0,
+      ),
+      steps: _roundOrNull(
+        _sumOrNull(stepSamples.map((s) => s.value).toList()),
+        0,
+      ),
+      hasWearableSource:
+          allSources.any((s) => _isWearable(s.sourceName)) ||
           sleepSamples.any((s) => _isWearable(s.sourceName)),
     );
   }).toList();

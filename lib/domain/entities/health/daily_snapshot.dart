@@ -62,30 +62,30 @@ class SleepSummary extends SleepStages {
   final String? wakeTime;
 
   factory SleepSummary.fromJson(Map<String, dynamic> json) => SleepSummary(
-        deepMinutes: (json['deepMinutes'] as num).toDouble(),
-        remMinutes: (json['remMinutes'] as num).toDouble(),
-        coreMinutes: (json['coreMinutes'] as num).toDouble(),
-        awakeMinutes: (json['awakeMinutes'] as num).toDouble(),
-        unspecifiedMinutes: (json['unspecifiedMinutes'] as num).toDouble(),
-        asleepMinutes: (json['asleepMinutes'] as num).toDouble(),
-        inBedMinutes: (json['inBedMinutes'] as num).toDouble(),
-        efficiency: (json['efficiency'] as num?)?.toDouble(),
-        bedtime: json['bedtime'] as String?,
-        wakeTime: json['wakeTime'] as String?,
-      );
+    deepMinutes: (json['deepMinutes'] as num).toDouble(),
+    remMinutes: (json['remMinutes'] as num).toDouble(),
+    coreMinutes: (json['coreMinutes'] as num).toDouble(),
+    awakeMinutes: (json['awakeMinutes'] as num).toDouble(),
+    unspecifiedMinutes: (json['unspecifiedMinutes'] as num).toDouble(),
+    asleepMinutes: (json['asleepMinutes'] as num).toDouble(),
+    inBedMinutes: (json['inBedMinutes'] as num).toDouble(),
+    efficiency: (json['efficiency'] as num?)?.toDouble(),
+    bedtime: json['bedtime'] as String?,
+    wakeTime: json['wakeTime'] as String?,
+  );
 
   Map<String, dynamic> toJson() => {
-        'deepMinutes': deepMinutes,
-        'remMinutes': remMinutes,
-        'coreMinutes': coreMinutes,
-        'awakeMinutes': awakeMinutes,
-        'unspecifiedMinutes': unspecifiedMinutes,
-        'asleepMinutes': asleepMinutes,
-        'inBedMinutes': inBedMinutes,
-        'efficiency': efficiency,
-        'bedtime': bedtime,
-        'wakeTime': wakeTime,
-      };
+    'deepMinutes': deepMinutes,
+    'remMinutes': remMinutes,
+    'coreMinutes': coreMinutes,
+    'awakeMinutes': awakeMinutes,
+    'unspecifiedMinutes': unspecifiedMinutes,
+    'asleepMinutes': asleepMinutes,
+    'inBedMinutes': inBedMinutes,
+    'efficiency': efficiency,
+    'bedtime': bedtime,
+    'wakeTime': wakeTime,
+  };
 }
 
 /// One calendar day of aggregated telemetry.
@@ -119,26 +119,26 @@ class DailySnapshot {
   final bool hasWearableSource;
 
   factory DailySnapshot.fromJson(Map<String, dynamic> json) => DailySnapshot(
-        day: json['day'] as String,
-        hrv: (json['hrv'] as num?)?.toDouble(),
-        restingHeartRate: (json['restingHeartRate'] as num?)?.toDouble(),
-        sleep: json['sleep'] == null
-            ? null
-            : SleepSummary.fromJson(json['sleep'] as Map<String, dynamic>),
-        activeEnergy: (json['activeEnergy'] as num?)?.toDouble(),
-        steps: (json['steps'] as num?)?.toDouble(),
-        hasWearableSource: json['hasWearableSource'] as bool? ?? false,
-      );
+    day: json['day'] as String,
+    hrv: (json['hrv'] as num?)?.toDouble(),
+    restingHeartRate: (json['restingHeartRate'] as num?)?.toDouble(),
+    sleep: json['sleep'] == null
+        ? null
+        : SleepSummary.fromJson(json['sleep'] as Map<String, dynamic>),
+    activeEnergy: (json['activeEnergy'] as num?)?.toDouble(),
+    steps: (json['steps'] as num?)?.toDouble(),
+    hasWearableSource: json['hasWearableSource'] as bool? ?? false,
+  );
 
   Map<String, dynamic> toJson() => {
-        'day': day,
-        'hrv': hrv,
-        'restingHeartRate': restingHeartRate,
-        'sleep': sleep?.toJson(),
-        'activeEnergy': activeEnergy,
-        'steps': steps,
-        'hasWearableSource': hasWearableSource,
-      };
+    'day': day,
+    'hrv': hrv,
+    'restingHeartRate': restingHeartRate,
+    'sleep': sleep?.toJson(),
+    'activeEnergy': activeEnergy,
+    'steps': steps,
+    'hasWearableSource': hasWearableSource,
+  };
 
   /// Projects a snapshot onto a single scalar for the given metric key.
   ///
@@ -177,18 +177,18 @@ class HealthSeries {
   final String syncedAt;
 
   factory HealthSeries.fromJson(Map<String, dynamic> json) => HealthSeries(
-        from: json['from'] as String,
-        to: json['to'] as String,
-        days: (json['days'] as List<dynamic>)
-            .map((d) => DailySnapshot.fromJson(d as Map<String, dynamic>))
-            .toList(),
-        syncedAt: json['syncedAt'] as String,
-      );
+    from: json['from'] as String,
+    to: json['to'] as String,
+    days: (json['days'] as List<dynamic>)
+        .map((d) => DailySnapshot.fromJson(d as Map<String, dynamic>))
+        .toList(),
+    syncedAt: json['syncedAt'] as String,
+  );
 
   Map<String, dynamic> toJson() => {
-        'from': from,
-        'to': to,
-        'days': days.map((d) => d.toJson()).toList(),
-        'syncedAt': syncedAt,
-      };
+    'from': from,
+    'to': to,
+    'days': days.map((d) => d.toJson()).toList(),
+    'syncedAt': syncedAt,
+  };
 }

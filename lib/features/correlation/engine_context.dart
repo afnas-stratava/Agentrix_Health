@@ -5,6 +5,7 @@ import '../../core/util/iso_day.dart';
 import '../../domain/entities/health/daily_snapshot.dart';
 import '../../domain/entities/health/metric_key.dart';
 import '../../domain/entities/insights/correlation.dart';
+import '../../domain/entities/labs/biomarker.dart';
 
 /// Ported from `src/features/correlation/context.ts`.
 
@@ -68,8 +69,9 @@ class MetricStats {
 MetricStats _buildMetricStats(List<DailySnapshot> series, MetricKey key) {
   final values = series.map((snapshot) => snapshot.readMetric(key)).toList();
 
-  final recentSlice =
-      values.sublist(math.max(0, values.length - recentWindowDays));
+  final recentSlice = values.sublist(
+    math.max(0, values.length - recentWindowDays),
+  );
   final baselineSlice = values.sublist(
     math.max(0, values.length - recentWindowDays - baselineWindowDays),
     math.max(0, values.length - recentWindowDays),
@@ -88,7 +90,9 @@ MetricStats _buildMetricStats(List<DailySnapshot> series, MetricKey key) {
   }
 
   final recentMean = recent.isNotEmpty ? mean(recent) : null;
-  final baselineMean = baseline.length >= minBaselineDays ? mean(baseline) : null;
+  final baselineMean = baseline.length >= minBaselineDays
+      ? mean(baseline)
+      : null;
 
   return MetricStats(
     key: key,
@@ -117,11 +121,19 @@ class EngineContext {
     required this.labCollectedAt,
     required this.sex,
     required this.now,
+    this.biomarkers = const {},
   });
 
   final List<IsoDay> days;
   final List<DailySnapshot> series;
   final Map<MetricKey, MetricStats> metrics;
+
+  /// Latest value per biomarker code, already unit-converted and flagged.
+  ///
+  /// Keyed rather than listed because every rule looks up by code, and an
+  /// unmapped analyte has nothing a rule could match on.
+  final Map<BiomarkerCode, Biomarker> biomarkers;
+
   final String? labReportId;
   final String? labCollectedAt;
   final BiologicalSex sex;
@@ -132,7 +144,9 @@ class EngineContext {
   /// Correlates two metrics with an optional lag; null when under-powered.
   Correlation? correlate(MetricKey a, MetricKey b, [int lagDays = 0]) {
     final cacheKey = '${a.wireName}|${b.wireName}|$lagDays';
-    if (_correlationCache.containsKey(cacheKey)) return _correlationCache[cacheKey];
+    if (_correlationCache.containsKey(cacheKey)) {
+      return _correlationCache[cacheKey];
+    }
 
     final paired = pairSeries(metrics[a]!.values, metrics[b]!.values, lagDays);
     final n = paired.x.length;
@@ -156,8 +170,8 @@ class EngineContext {
       direction: strength == CorrelationStrength.none
           ? CorrelationDirection.none
           : r > 0
-              ? CorrelationDirection.positive
-              : CorrelationDirection.negative,
+          ? CorrelationDirection.positive
+          : CorrelationDirection.negative,
     );
 
     _correlationCache[cacheKey] = result;
@@ -167,6 +181,7 @@ class EngineContext {
 
 EngineContext buildEngineContext({
   required List<DailySnapshot> series,
+  List<Biomarker> biomarkers = const [],
   String? labReportId,
   String? labCollectedAt,
   BiologicalSex sex = BiologicalSex.unspecified,
@@ -180,6 +195,10 @@ EngineContext buildEngineContext({
     days: series.map((s) => s.day).toList(),
     series: series,
     metrics: metrics,
+    biomarkers: {
+      for (final biomarker in biomarkers)
+        if (biomarker.code != null) biomarker.code!: biomarker,
+    },
     labReportId: labReportId,
     labCollectedAt: labCollectedAt,
     sex: sex,
@@ -188,5 +207,6 @@ EngineContext buildEngineContext({
 }
 
 /// True when the window has enough signal for the engine to say anything.
-bool hasSufficientTelemetry(EngineContext context) =>
-    MetricKey.values.any((key) => context.metrics[key]!.baselineDays >= minBaselineDays);
+bool hasSufficientTelemetry(EngineContext context) => MetricKey.values.any(
+  (key) => context.metrics[key]!.baselineDays >= minBaselineDays,
+);

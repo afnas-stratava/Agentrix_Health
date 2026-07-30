@@ -18,9 +18,10 @@ enum MetricKey {
   final String wireName;
 
   static MetricKey fromWireName(String value) => MetricKey.values.firstWhere(
-        (k) => k.wireName == value,
-        orElse: () => throw ArgumentError.value(value, 'value', 'Unknown MetricKey'),
-      );
+    (k) => k.wireName == value,
+    orElse: () =>
+        throw ArgumentError.value(value, 'value', 'Unknown MetricKey'),
+  );
 }
 
 /// Direction in which a metric moving *up* is clinically desirable.

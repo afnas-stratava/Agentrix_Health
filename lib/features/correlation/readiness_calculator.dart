@@ -76,8 +76,9 @@ Readiness? computeReadiness(EngineContext context) {
   // Normalise to the weight actually available, then map z ∈ [−2.5, 2.5] onto
   // 0–100 centred at 50 (= exactly at your own baseline).
   final normalisedZ = weighted / weightUsed;
-  final score =
-      math.min(100.0, math.max(0.0, 50 + (normalisedZ / _zClamp) * 50)).round();
+  final score = math
+      .min(100.0, math.max(0.0, 50 + (normalisedZ / _zClamp) * 50))
+      .round();
 
   drivers.sort((a, b) => b.contribution.abs().compareTo(a.contribution.abs()));
 

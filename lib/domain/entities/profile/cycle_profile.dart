@@ -39,31 +39,29 @@ class CycleProfile {
     int? averageCycleDays,
     int? averagePeriodDays,
     bool? hormonalContraception,
-  }) =>
-      CycleProfile(
-        tracks: tracks ?? this.tracks,
-        periodStarts: periodStarts ?? this.periodStarts,
-        averageCycleDays: averageCycleDays ?? this.averageCycleDays,
-        averagePeriodDays: averagePeriodDays ?? this.averagePeriodDays,
-        hormonalContraception:
-            hormonalContraception ?? this.hormonalContraception,
-      );
+  }) => CycleProfile(
+    tracks: tracks ?? this.tracks,
+    periodStarts: periodStarts ?? this.periodStarts,
+    averageCycleDays: averageCycleDays ?? this.averageCycleDays,
+    averagePeriodDays: averagePeriodDays ?? this.averagePeriodDays,
+    hormonalContraception: hormonalContraception ?? this.hormonalContraception,
+  );
 
   factory CycleProfile.fromJson(Map<String, dynamic> json) => CycleProfile(
-        tracks: json['tracks'] as bool? ?? false,
-        periodStarts:
-            (json['periodStarts'] as List<dynamic>?)?.cast<String>().toList() ??
-                const [],
-        averageCycleDays: (json['averageCycleDays'] as num?)?.toInt() ?? 28,
-        averagePeriodDays: (json['averagePeriodDays'] as num?)?.toInt() ?? 5,
-        hormonalContraception: json['hormonalContraception'] as bool? ?? false,
-      );
+    tracks: json['tracks'] as bool? ?? false,
+    periodStarts:
+        (json['periodStarts'] as List<dynamic>?)?.cast<String>().toList() ??
+        const [],
+    averageCycleDays: (json['averageCycleDays'] as num?)?.toInt() ?? 28,
+    averagePeriodDays: (json['averagePeriodDays'] as num?)?.toInt() ?? 5,
+    hormonalContraception: json['hormonalContraception'] as bool? ?? false,
+  );
 
   Map<String, dynamic> toJson() => {
-        'tracks': tracks,
-        'periodStarts': periodStarts,
-        'averageCycleDays': averageCycleDays,
-        'averagePeriodDays': averagePeriodDays,
-        'hormonalContraception': hormonalContraception,
-      };
+    'tracks': tracks,
+    'periodStarts': periodStarts,
+    'averageCycleDays': averageCycleDays,
+    'averagePeriodDays': averagePeriodDays,
+    'hormonalContraception': hormonalContraception,
+  };
 }

@@ -37,8 +37,9 @@ class SegmentedControl<T> extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.divider),
-        borderRadius: BorderRadius.circular(AppSpacing.space4),
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.hairline),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       clipBehavior: Clip.antiAlias,
       child: row,
@@ -49,18 +50,19 @@ class SegmentedControl<T> extends StatelessWidget {
     final isChecked = option.value == selected;
     final child = Container(
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: isChecked ? AppColors.accent : Colors.transparent,
-        border: isFirst
+        color: isChecked ? AppColors.brand : Colors.transparent,
+        border: isFirst || isChecked
             ? null
-            : Border(left: BorderSide(color: AppColors.divider)),
+            : Border(left: BorderSide(color: AppColors.hairline)),
       ),
       child: Text(
         option.label,
         style: AppTextStyles.body.copyWith(
           fontSize: 13,
-          color: isChecked ? AppColors.bg : AppColors.text,
+          fontWeight: isChecked ? FontWeight.w600 : FontWeight.w500,
+          color: isChecked ? AppColors.onBrand : AppColors.muted,
         ),
       ),
     );

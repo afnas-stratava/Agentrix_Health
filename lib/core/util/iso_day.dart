@@ -68,7 +68,8 @@ DateTime addDays(DateTime date, int days) {
 /// midnights is 23 or 25 hours, and truncating would report the wrong number
 /// of days twice a year.
 int daysBetween(DateTime a, DateTime b) {
-  final ms = startOfLocalDay(b).millisecondsSinceEpoch -
+  final ms =
+      startOfLocalDay(b).millisecondsSinceEpoch -
       startOfLocalDay(a).millisecondsSinceEpoch;
   return (ms / 86400000).round();
 }
@@ -109,4 +110,5 @@ String formatDuration(double hours) {
 
 /// UTC ISO-8601 with a `Z` suffix, matching JavaScript's `toISOString()` so
 /// timestamps written by the React Native build and this one stay comparable.
-String nowIso([DateTime? now]) => (now ?? DateTime.now()).toUtc().toIso8601String();
+String nowIso([DateTime? now]) =>
+    (now ?? DateTime.now()).toUtc().toIso8601String();

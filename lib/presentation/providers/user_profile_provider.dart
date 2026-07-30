@@ -7,6 +7,8 @@ import '../../domain/entities/allergy.dart';
 import '../../domain/entities/cuisine_preference.dart';
 import '../../domain/entities/gender.dart';
 import '../../domain/entities/health_goal.dart';
+import '../../domain/entities/profile/cycle_profile.dart';
+import '../../domain/entities/profile/diet_pattern.dart';
 import '../../domain/entities/user_profile.dart';
 import 'auth_providers.dart';
 import 'repository_providers.dart';
@@ -78,7 +80,8 @@ class UserProfileNotifier extends Notifier<UserProfile> {
   }
 
   void toggleCuisine(CuisinePreference cuisine) {
-    final cuisines = Set<CuisinePreference>.from(state.cuisines);
+    final cuisines = [...state.cuisines];
+    // Appending keeps the tap order, which is what the rank badges show.
     cuisines.contains(cuisine)
         ? cuisines.remove(cuisine)
         : cuisines.add(cuisine);
@@ -115,6 +118,45 @@ class UserProfileNotifier extends Notifier<UserProfile> {
           .toList(),
     );
     _persistNow();
+  }
+
+  void setBodyComposition({double? heightCm, double? weightKg}) {
+    state = state.copyWith(heightCm: heightCm, weightKg: weightKg);
+    _persistDebounced();
+  }
+
+  void setActivityLevel(ActivityLevel level) {
+    state = state.copyWith(activityLevel: level);
+    _persistNow();
+  }
+
+  void setDietPattern(DietPattern pattern) {
+    state = state.copyWith(dietPattern: pattern);
+    _persistNow();
+  }
+
+  void toggleRestriction(Restriction restriction) {
+    final next = Set<Restriction>.from(state.restrictions);
+    next.contains(restriction)
+        ? next.remove(restriction)
+        : next.add(restriction);
+    state = state.copyWith(restrictions: next);
+    _persistNow();
+  }
+
+  void toggleCondition(Condition condition) {
+    final next = Set<Condition>.from(state.conditions);
+    next.contains(condition) ? next.remove(condition) : next.add(condition);
+    state = state.copyWith(conditions: next);
+    _persistNow();
+  }
+
+  /// Awaitable, unlike the fire-and-forget setters: logging a period start
+  /// immediately re-renders the cycle surface, and a caller that wants to show a
+  /// confirmation needs to know the write happened.
+  Future<void> updateCycle(CycleProfile cycle) async {
+    state = state.copyWith(cycle: cycle);
+    await _persist();
   }
 
   void reset() {

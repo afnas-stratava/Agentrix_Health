@@ -118,14 +118,16 @@ void main() {
       expect(percentChange(50, 60), closeTo(20, 0.5e-10));
     });
 
-    test('smooths a dense series and blanks positions with too few neighbours',
-        () {
-      // Window 3 needs at least 2 of the 3 surrounding values to be present.
-      final result = rollingMean([2, 4, 6, null, null, null, 8], 3);
+    test(
+      'smooths a dense series and blanks positions with too few neighbours',
+      () {
+        // Window 3 needs at least 2 of the 3 surrounding values to be present.
+        final result = rollingMean([2, 4, 6, null, null, null, 8], 3);
 
-      expect(result[1], closeTo(4, 0.5e-10)); // (2+4+6)/3
-      expect(result[4], isNull); // isolated inside the gap
-      expect(result[6], isNull); // only itself at the edge of the gap
-    });
+        expect(result[1], closeTo(4, 0.5e-10)); // (2+4+6)/3
+        expect(result[4], isNull); // isolated inside the gap
+        expect(result[6], isNull); // only itself at the edge of the gap
+      },
+    );
   });
 }

@@ -16,12 +16,11 @@ void main() {
     bool tracks = true,
     List<IsoDay> periodStarts = const [],
     bool hormonalContraception = false,
-  }) =>
-      CycleProfile(
-        tracks: tracks,
-        periodStarts: periodStarts,
-        hormonalContraception: hormonalContraception,
-      );
+  }) => CycleProfile(
+    tracks: tracks,
+    periodStarts: periodStarts,
+    hormonalContraception: hormonalContraception,
+  );
 
   /// Period starts `daysAgo` before [now], as ISO days.
   List<IsoDay> startedDaysAgo(List<int> daysAgo) =>
@@ -43,15 +42,19 @@ void main() {
     });
 
     test('places day 3 in the menstrual phase', () {
-      final phase =
-          computeMenstrualPhase(cycle(periodStarts: startedDaysAgo([2])), now);
+      final phase = computeMenstrualPhase(
+        cycle(periodStarts: startedDaysAgo([2])),
+        now,
+      );
       expect(phase?.name, MenstrualPhaseName.menstrual);
       expect(phase?.dayOfCycle, 3);
     });
 
     test('places day 10 of a 28-day cycle in the follicular phase', () {
-      final phase =
-          computeMenstrualPhase(cycle(periodStarts: startedDaysAgo([9])), now);
+      final phase = computeMenstrualPhase(
+        cycle(periodStarts: startedDaysAgo([9])),
+        now,
+      );
       expect(phase?.name, MenstrualPhaseName.follicular);
     });
 
@@ -66,8 +69,10 @@ void main() {
     });
 
     test('places the late cycle in the luteal phase', () {
-      final phase =
-          computeMenstrualPhase(cycle(periodStarts: startedDaysAgo([21])), now);
+      final phase = computeMenstrualPhase(
+        cycle(periodStarts: startedDaysAgo([21])),
+        now,
+      );
       expect(phase?.name, MenstrualPhaseName.luteal);
       expect(phase?.daysUntilNextPeriod, 7);
     });
@@ -83,20 +88,25 @@ void main() {
     });
 
     test('falls back to the declared length at moderate confidence', () {
-      final phase =
-          computeMenstrualPhase(cycle(periodStarts: startedDaysAgo([5])), now);
+      final phase = computeMenstrualPhase(
+        cycle(periodStarts: startedDaysAgo([5])),
+        now,
+      );
       expect(phase?.isMeasuredLength, isFalse);
       expect(phase?.confidence, PhaseConfidence.moderate);
     });
 
-    test('takes the median gap so one skipped log cannot distort the model', () {
-      // Gaps of 28, 56 (a missed log) and 28 → median 28, not the 37 mean.
-      final phase = computeMenstrualPhase(
-        cycle(periodStarts: startedDaysAgo([2, 30, 86, 114])),
-        now,
-      );
-      expect(phase?.cycleLengthDays, 28);
-    });
+    test(
+      'takes the median gap so one skipped log cannot distort the model',
+      () {
+        // Gaps of 28, 56 (a missed log) and 28 → median 28, not the 37 mean.
+        final phase = computeMenstrualPhase(
+          cycle(periodStarts: startedDaysAgo([2, 30, 86, 114])),
+          now,
+        );
+        expect(phase?.cycleLengthDays, 28);
+      },
+    );
 
     test('stops rather than inventing a phase once a log goes stale', () {
       expect(
@@ -105,14 +115,18 @@ void main() {
       );
     });
 
-    test('still reports a late period inside the grace window, at low confidence',
-        () {
-      final phase =
-          computeMenstrualPhase(cycle(periodStarts: startedDaysAgo([31])), now);
-      expect(phase?.name, MenstrualPhaseName.luteal);
-      expect(phase?.daysUntilNextPeriod, -3);
-      expect(phase?.confidence, PhaseConfidence.low);
-    });
+    test(
+      'still reports a late period inside the grace window, at low confidence',
+      () {
+        final phase = computeMenstrualPhase(
+          cycle(periodStarts: startedDaysAgo([31])),
+          now,
+        );
+        expect(phase?.name, MenstrualPhaseName.luteal);
+        expect(phase?.daysUntilNextPeriod, -3);
+        expect(phase?.confidence, PhaseConfidence.low);
+      },
+    );
 
     test('downgrades confidence on hormonal contraception', () {
       final phase = computeMenstrualPhase(

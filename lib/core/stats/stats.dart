@@ -15,7 +15,9 @@ double median(List<double> values) {
   if (values.isEmpty) return double.nan;
   final sorted = [...values]..sort();
   final mid = sorted.length ~/ 2;
-  return sorted.length.isEven ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  return sorted.length.isEven
+      ? (sorted[mid - 1] + sorted[mid]) / 2
+      : sorted[mid];
 }
 
 /// Sample standard deviation (n − 1).
@@ -23,7 +25,8 @@ double stdDev(List<double> values) {
   if (values.length < 2) return double.nan;
   final m = mean(values);
   final variance =
-      values.fold<double>(0, (sum, v) => sum + (v - m) * (v - m)) / (values.length - 1);
+      values.fold<double>(0, (sum, v) => sum + (v - m) * (v - m)) /
+      (values.length - 1);
   return math.sqrt(variance);
 }
 
@@ -59,11 +62,7 @@ class PairedSeries {
 /// is missing. [lag] shifts `x` backwards so `x[t − lag]` is compared with
 /// `y[t]`, which is how a physiological input is tested against a delayed
 /// response (e.g. training load today → HRV tomorrow).
-PairedSeries pairSeries(
-  List<double?> xs,
-  List<double?> ys, [
-  int lag = 0,
-]) {
+PairedSeries pairSeries(List<double?> xs, List<double?> ys, [int lag = 0]) {
   final x = <double>[];
   final y = <double>[];
 
@@ -136,7 +135,10 @@ double _logGamma(double x) {
     a += _lanczosCoefficients[i] / (z + i);
   }
 
-  return 0.5 * math.log(2 * math.pi) + (z + 0.5) * math.log(t) - t + math.log(a);
+  return 0.5 * math.log(2 * math.pi) +
+      (z + 0.5) * math.log(t) -
+      t +
+      math.log(a);
 }
 
 /// Continued-fraction expansion for the incomplete beta (Lentz's method).

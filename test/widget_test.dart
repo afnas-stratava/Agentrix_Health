@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:agentrix_health/app.dart';
 
 void main() {
-  testWidgets('Onboarding welcome screen leads into the goal-setup form', (WidgetTester tester) async {
+  testWidgets('Onboarding welcome screen leads into the goal-setup form', (
+    WidgetTester tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(430, 960));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 

@@ -42,6 +42,35 @@ dependencies:
   firebase_auth: ^6.5.6
   cloud_firestore: ^6.7.1
 
+  # Apple Health / Google Health Connect telemetry. Bound to the app's own
+  # HealthProvider interface, so the synthetic provider stays a drop-in
+  # replacement on the simulator and in CI.
+  health: ^13.3.0
+
+  # Blood-report upload: file_picker takes the PDF, image_picker takes the
+  # photo (and the meal photo on the food log).
+  file_picker: ^8.3.7
+  image_picker: ^1.1.2
+
+  # Nearby restaurant search.
+  geolocator: ^13.0.2
+  http: ^1.2.2
+
+  # Local persistence for the food log, hydration and lab reports, so a demo
+  # survives a restart without needing a backend.
+  shared_preferences: ^2.3.3
+
+# Build workaround, not a preference — remove once Xcode ships the iOS 26.1 SDK.
+#
+# `health` pulls `device_info_plus: ^12.1.0`, and 12.4.0 calls
+# `NSProcessInfo.isiOSAppOnVision` behind an `@available(iOS 26.1, *)` guard.
+# Xcode 26.0.1 ships the iOS 26.0 SDK, which does not declare that selector, so
+# the guard compiles but the call does not: "No visible @interface for
+# 'NSProcessInfo'". Pinning to 12.3.0 stays inside health's constraint and
+# predates the call.
+dependency_overrides:
+  device_info_plus: 12.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

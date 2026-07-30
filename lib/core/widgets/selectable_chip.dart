@@ -14,6 +14,8 @@ class SelectableChip extends StatelessWidget {
     required this.onTap,
     this.selectedBackground,
     this.selectedForeground,
+    this.selectedBorder,
+    this.rank,
     this.onRemove,
   });
 
@@ -22,17 +24,27 @@ class SelectableChip extends StatelessWidget {
   final VoidCallback onTap;
   final Color? selectedBackground;
   final Color? selectedForeground;
+  final Color? selectedBorder;
+
+  /// Shows the selection order — used where order is preference weight.
+  final int? rank;
+
   final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
+    // Mirrors `ChoiceChip` in the React Native app: selected is a brand-50
+    // fill inside a brand-400 hairline, unselected is a plain surface chip
+    // with muted copy.
     final background = selected
-        ? (selectedBackground ?? AppColors.accent100)
-        : Colors.transparent;
+        ? (selectedBackground ?? AppColors.brand50)
+        : AppColors.surface;
     final foreground = selected
-        ? (selectedForeground ?? AppColors.accent800)
-        : AppColors.text;
-    final borderColor = selected ? Colors.transparent : AppColors.divider;
+        ? (selectedForeground ?? AppColors.brand700)
+        : AppColors.muted;
+    final borderColor = selected
+        ? (selectedBorder ?? AppColors.brand400)
+        : AppColors.hairline;
 
     return Material(
       color: background,
@@ -42,7 +54,7 @@ class SelectableChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         child: Container(
           padding: EdgeInsets.only(
-            left: 14,
+            left: rank != null && selected ? 8 : 14,
             right: onRemove != null ? 8 : 14,
             top: 8,
             bottom: 8,
@@ -53,8 +65,27 @@ class SelectableChip extends StatelessWidget {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            spacing: 4,
+            spacing: 6,
             children: [
+              if (rank != null && selected)
+                Container(
+                  width: 16,
+                  height: 16,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.brand600,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$rank',
+                    style: AppTextStyles.tag.copyWith(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onBrand,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
               Text(
                 label,
                 style: AppTextStyles.bodySmall.copyWith(

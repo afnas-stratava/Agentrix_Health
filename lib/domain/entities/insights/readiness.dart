@@ -20,10 +20,10 @@ class ReadinessDriver {
   final double z;
 
   Map<String, dynamic> toJson() => {
-        'metric': metric.wireName,
-        'contribution': contribution,
-        'z': z,
-      };
+    'metric': metric.wireName,
+    'contribution': contribution,
+    'z': z,
+  };
 }
 
 class Readiness {
@@ -47,12 +47,12 @@ class Readiness {
   final String computedAt;
 
   Map<String, dynamic> toJson() => {
-        'score': score,
-        'band': band.name,
-        'drivers': drivers.map((d) => d.toJson()).toList(),
-        'baselineDays': baselineDays,
-        'computedAt': computedAt,
-      };
+    'score': score,
+    'band': band.name,
+    'drivers': drivers.map((d) => d.toJson()).toList(),
+    'baselineDays': baselineDays,
+    'computedAt': computedAt,
+  };
 }
 
 class ReadinessCopy {

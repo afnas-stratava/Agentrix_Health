@@ -1,4 +1,5 @@
 import '../../core/util/iso_day.dart';
+import '../../domain/entities/nutrition/food_definition.dart';
 import '../../domain/entities/profile/cycle_profile.dart';
 
 /// Menstrual-cycle phase model. Ported from `src/features/cycle/phase.ts`.
@@ -67,6 +68,16 @@ class MenstrualPhase {
 
   /// One line the brief can quote directly.
   final String summary;
+
+  /// 1-indexed day of the cycle on which ovulation is expected.
+  ///
+  /// Derived rather than stored, from the same fixed luteal length the phase
+  /// boundaries use — so the ring, the countdown and the phase call can never
+  /// disagree about when ovulation is.
+  int get ovulationDay => cycleLengthDays - _lutealLengthDays;
+
+  /// Days until [ovulationDay]; negative once it has passed.
+  int get daysUntilOvulation => ovulationDay - dayOfCycle;
 }
 
 /// Median gap between consecutive logged periods. Median rather than mean
@@ -132,8 +143,9 @@ MenstrualPhase? computeMenstrualPhase(CycleProfile cycle, [DateTime? now]) {
     name = MenstrualPhaseName.luteal;
   }
 
-  var confidence =
-      measured != null ? PhaseConfidence.high : PhaseConfidence.moderate;
+  var confidence = measured != null
+      ? PhaseConfidence.high
+      : PhaseConfidence.moderate;
   if (cycle.hormonalContraception) confidence = PhaseConfidence.low;
   if (elapsed > cycleLengthDays) confidence = PhaseConfidence.low;
 
@@ -193,11 +205,7 @@ class PhaseGuidance {
   final String nutrition;
 
   /// Food tags to float up in dish and restaurant ranking during this phase.
-  ///
-  /// Typed as `String` until `src/schemas/nutrition.ts` is ported, at which
-  /// point this becomes the `FoodTag` enum. The values match the TypeScript
-  /// `FoodTag` union members exactly, so the swap is mechanical.
-  final List<String> favourTags;
+  final List<FoodTag> favourTags;
 
   /// Telemetry the user should expect to look worse, so it is not read as
   /// illness.
@@ -211,7 +219,7 @@ const Map<MenstrualPhaseName, PhaseGuidance> phaseGuidance = {
         'Keep it easy — walking, mobility or a light session. Match effort to how you feel rather than to the plan.',
     nutrition:
         'Iron losses peak now. Pair an iron source with vitamin C at the same meal, and keep caffeine away from it by an hour or so — both change how much you actually absorb.',
-    favourTags: ['iron-rich', 'vitamin-c-rich', 'high-protein'],
+    favourTags: [FoodTag.ironRich, FoodTag.vitaminCRich, FoodTag.highProtein],
     expectedTelemetryNote:
         'A slightly lower HRV and higher resting heart rate during your period is normal and not a sign of overtraining.',
   ),
@@ -221,7 +229,7 @@ const Map<MenstrualPhaseName, PhaseGuidance> phaseGuidance = {
         'Rising oestrogen improves carbohydrate use and recovery. This is the window for your hardest sessions and any strength progression.',
     nutrition:
         'Carbohydrate tolerance is at its best — put your bigger, starchier meals around training here rather than later in the month.',
-    favourTags: ['wholegrain', 'high-protein'],
+    favourTags: [FoodTag.wholegrain, FoodTag.highProtein],
     expectedTelemetryNote: null,
   ),
   MenstrualPhaseName.ovulatory: PhaseGuidance(
@@ -230,7 +238,7 @@ const Map<MenstrualPhaseName, PhaseGuidance> phaseGuidance = {
         'Peak strength and power. Worth a heavy session — with a proper warm-up, since ligament laxity is also at its highest.',
     nutrition:
         'Keep protein high to make use of the recovery window, and hydrate deliberately.',
-    favourTags: ['high-protein', 'leafy-green'],
+    favourTags: [FoodTag.highProtein, FoodTag.leafyGreen],
     expectedTelemetryNote: null,
   ),
   MenstrualPhaseName.luteal: PhaseGuidance(
@@ -239,7 +247,7 @@ const Map<MenstrualPhaseName, PhaseGuidance> phaseGuidance = {
         'Hold volume, drop intensity a notch. Core temperature runs higher, so the same session will feel harder than it did two weeks ago.',
     nutrition:
         'Resting expenditure is genuinely higher — roughly 5% — so a slightly larger appetite is physiology, not a lapse. Magnesium and fibre help with the bloating and the cravings.',
-    favourTags: ['high-fibre', 'calcium-rich', 'omega3-rich'],
+    favourTags: [FoodTag.highFibre, FoodTag.calciumRich, FoodTag.omega3Rich],
     expectedTelemetryNote:
         'Resting heart rate typically sits a few beats higher and HRV a little lower across the luteal phase.',
   ),

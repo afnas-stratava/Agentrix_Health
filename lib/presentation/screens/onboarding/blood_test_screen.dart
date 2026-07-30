@@ -5,18 +5,20 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/app_tag.dart';
 import '../../../core/widgets/status_bar_style.dart';
-import '../../../domain/entities/blood_marker.dart';
+import '../../../domain/entities/labs/lab_report.dart';
 import '../../providers/app_stage_provider.dart';
-import '../../providers/blood_test_provider.dart';
+import '../../providers/labs_providers.dart';
+import '../../widgets/labs/biomarker_table.dart';
+import '../../widgets/labs/upload_report_actions.dart';
 
 class BloodTestScreen extends ConsumerWidget {
   const BloodTestScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bloodTest = ref.watch(bloodTestProvider);
+    final labs = ref.watch(labsProvider);
+    final report = labs.latest;
 
     return StatusBarStyle(
       light: false,
@@ -31,22 +33,19 @@ class BloodTestScreen extends ConsumerWidget {
                 style: AppTextStyles.h6.copyWith(color: AppColors.accent700),
               ),
               const SizedBox(height: AppSpacing.space2),
-              Text('Upload your blood test', style: AppTextStyles.h3),
+              Text('Add your blood test', style: AppTextStyles.h3),
               const SizedBox(height: AppSpacing.space2),
               Text(
-                "We'll pull key markers so your morning plan reflects what's actually going on in your body.",
+                "We'll pull the key markers so your morning plan reflects "
+                "what's actually going on in your body.",
                 style: AppTextStyles.muted.copyWith(fontSize: 14),
               ),
-              const SizedBox(height: AppSpacing.space6),
+              const SizedBox(height: AppSpacing.space5),
               Expanded(
                 child: SingleChildScrollView(
-                  child: bloodTest.uploaded
-                      ? _UploadedContent(markers: bloodTest.markers)
-                      : _EmptyContent(
-                          onUseSample: () => ref
-                              .read(bloodTestProvider.notifier)
-                              .useSampleReport(),
-                        ),
+                  child: report == null
+                      ? const UploadReportActions()
+                      : _ParsedReport(report: report),
                 ),
               ),
               const Divider(height: AppSpacing.space4 * 2, thickness: 2),
@@ -61,12 +60,18 @@ class BloodTestScreen extends ConsumerWidget {
                   ),
                   Expanded(
                     child: AppButton(
-                      label: 'Continue',
-                      onPressed: bloodTest.uploaded
-                          ? () => ref
+                      // Skippable on purpose: blood work sharpens the brief but
+                      // is not required for it, and a hard gate here would
+                      // strand anyone without a recent panel.
+                      label: report == null ? 'Skip for now' : 'Continue',
+                      variant: report == null
+                          ? AppButtonVariant.secondary
+                          : AppButtonVariant.primary,
+                      onPressed: labs.parsing
+                          ? null
+                          : () => ref
                                 .read(appStageProvider.notifier)
-                                .goHealthConnect()
-                          : null,
+                                .goHealthConnect(),
                     ),
                   ),
                 ],
@@ -79,67 +84,15 @@ class BloodTestScreen extends ConsumerWidget {
   }
 }
 
-class _EmptyContent extends StatelessWidget {
-  const _EmptyContent({required this.onUseSample});
+class _ParsedReport extends ConsumerWidget {
+  const _ParsedReport({required this.report});
 
-  final VoidCallback onUseSample;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space4,
-            vertical: AppSpacing.space8,
-          ),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: AppColors.divider,
-              style: BorderStyle.solid,
-              width: 1,
-            ),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            children: [
-              const Icon(
-                Icons.upload_file_outlined,
-                size: 28,
-                color: AppColors.accent700,
-              ),
-              const SizedBox(height: AppSpacing.space2),
-              Text(
-                'Drop a PDF or photo here',
-                style: AppTextStyles.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space1),
-              Text('or', style: AppTextStyles.muted.copyWith(fontSize: 12)),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space4),
-        AppButton(
-          label: 'Use sample report (demo)',
-          block: true,
-          leading: const Icon(Icons.science_outlined, size: 16),
-          onPressed: onUseSample,
-        ),
-      ],
-    );
-  }
-}
-
-class _UploadedContent extends StatelessWidget {
-  const _UploadedContent({required this.markers});
-
-  final List<BloodMarker> markers;
+  final LabReport report;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final flagged = report.flagged;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -149,104 +102,69 @@ class _UploadedContent extends StatelessWidget {
             vertical: AppSpacing.space2,
           ),
           decoration: BoxDecoration(
-            color: AppColors.accent100,
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.brand50,
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             spacing: AppSpacing.space2,
             children: [
               const Icon(
                 Icons.check_circle_outline,
                 size: 16,
-                color: AppColors.accent800,
+                color: AppColors.brand800,
               ),
-              Text(
-                'Blood report analyzed',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.accent800,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              Expanded(
+                child: Text(
+                  '${report.biomarkers.length} markers read'
+                  '${flagged.isEmpty ? '' : ', ${flagged.length} to watch'}',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.brand800,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.space4),
-        Table(
-          columnWidths: const {
-            0: FlexColumnWidth(1.4),
-            1: FlexColumnWidth(1.2),
-            2: FlexColumnWidth(1),
-          },
-          children: [
-            TableRow(
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppColors.divider, width: 2),
-                ),
-              ),
+
+        // Every warning the parser attached, verbatim — including the standing
+        // disclosure that no OCR service is configured in this build.
+        for (final warning in report.warnings)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.space2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: AppSpacing.space2,
               children: [
-                _headerCell('Marker'),
-                _headerCell('Value'),
-                _headerCell('Status'),
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Icon(
+                    Icons.info_outline,
+                    size: 13,
+                    color: AppColors.muted,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    warning,
+                    style: AppTextStyles.cardBody.copyWith(height: 1.45),
+                  ),
+                ),
               ],
             ),
-            for (final marker in markers)
-              TableRow(
-                decoration: const BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 1),
-                  ),
-                ),
-                children: [
-                  _cell(
-                    Text(
-                      marker.label,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  _cell(
-                    Text(
-                      marker.value,
-                      style: AppTextStyles.muted.copyWith(fontSize: 14),
-                    ),
-                  ),
-                  _cell(
-                    AppTag(
-                      label: marker.status.label,
-                      variant: marker.status.needsAttention
-                          ? AppTagVariant.accent
-                          : AppTagVariant.neutral,
-                    ),
-                  ),
-                ],
-              ),
-          ],
+          ),
+
+        const SizedBox(height: AppSpacing.space2),
+        BiomarkerTable(report: report),
+        const SizedBox(height: AppSpacing.space4),
+        AppButton(
+          label: 'Use a different report',
+          variant: AppButtonVariant.ghost,
+          block: true,
+          onPressed: () => ref.read(labsProvider.notifier).remove(report.id),
         ),
       ],
-    );
-  }
-
-  Widget _headerCell(String label) {
-    return _cell(
-      Text(
-        label.toUpperCase(),
-        style: AppTextStyles.cardMeta.copyWith(
-          fontSize: 11,
-          letterSpacing: 1,
-          color: AppColors.text.withValues(alpha: 0.6),
-        ),
-      ),
-    );
-  }
-
-  Widget _cell(Widget child) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.space2),
-      child: Align(alignment: Alignment.centerLeft, child: child),
     );
   }
 }

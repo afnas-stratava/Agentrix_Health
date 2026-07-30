@@ -2,7 +2,20 @@ import 'allergy.dart';
 import 'cuisine_preference.dart';
 import 'gender.dart';
 import 'health_goal.dart';
+import 'profile/cuisine.dart';
+import 'profile/cycle_profile.dart';
+import 'profile/diet_pattern.dart';
 
+/// The user-declared half of the health picture.
+///
+/// Everything here is *stated*, never inferred: telemetry tells us how someone
+/// slept and blood work tells us what is circulating, but only the user can
+/// tell us they are vegetarian, allergic to peanuts, or training for a race.
+///
+/// The targets calculator, the morning brief and the restaurant ranker all read
+/// from this class, so a field added here shows up in three features at once.
+/// Onboarding collects the first seven; the rest carry defaults good enough to
+/// compute with and are editable from the Profile tab.
 class UserProfile {
   const UserProfile({
     required this.name,
@@ -12,22 +25,49 @@ class UserProfile {
     required this.cuisines,
     required this.allergies,
     required this.customRestrictions,
+    this.heightCm,
+    this.weightKg,
+    this.targetWeightKg,
+    this.activityLevel = ActivityLevel.light,
+    this.dietPattern = DietPattern.omnivore,
+    this.restrictions = const {},
+    this.conditions = const {},
+    this.cycle = const CycleProfile(),
   });
 
   final String name;
+
+  /// Bound straight to a text field, so it stays a `String`; anything that
+  /// needs to compute reads [ageYears].
   final String age;
+
   final Gender gender;
   final HealthGoal goal;
-  final Set<CuisinePreference> cuisines;
+
+  /// Ordered by preference — the first pick carries the most weight when
+  /// suggesting a meal, so this is a list rather than a set.
+  final List<CuisinePreference> cuisines;
   final Set<Allergy> allergies;
   final List<String> customRestrictions;
+
+  final double? heightCm;
+  final double? weightKg;
+  final double? targetWeightKg;
+
+  /// Self-declared; used only when no wearable energy data exists.
+  final ActivityLevel activityLevel;
+
+  final DietPattern dietPattern;
+  final Set<Restriction> restrictions;
+  final Set<Condition> conditions;
+  final CycleProfile cycle;
 
   factory UserProfile.initial() => const UserProfile(
     name: '',
     age: '',
     gender: Gender.female,
     goal: HealthGoal.generalWellness,
-    cuisines: {},
+    cuisines: [],
     allergies: {},
     customRestrictions: [],
   );
@@ -38,14 +78,52 @@ class UserProfile {
 
   String get initial => greetingName[0].toUpperCase();
 
+  int? get ageYears {
+    final parsed = int.tryParse(age.trim());
+    if (parsed == null || parsed < 10 || parsed > 120) return null;
+    return parsed;
+  }
+
+  /// The ranker's cuisine vocabulary, expanded from the onboarding chips.
+  List<Cuisine> get rankedCuisines => expandCuisinePreferences(cuisines);
+
+  /// True once we know enough to compute calorie and macro targets.
+  bool get canComputeTargets =>
+      heightCm != null && weightKg != null && ageYears != null;
+
+  double? get bodyMassIndex {
+    final height = heightCm;
+    final weight = weightKg;
+    if (height == null || weight == null) return null;
+    final metres = height / 100;
+    return (weight / (metres * metres) * 10).round() / 10;
+  }
+
+  /// A "Vegetarian" *cuisine* chip is really a diet declaration; honour it as
+  /// one, unless the user has already stated something stricter.
+  DietPattern get effectiveDietPattern {
+    if (dietPattern != DietPattern.omnivore) return dietPattern;
+    return cuisines.contains(CuisinePreference.vegetarian)
+        ? DietPattern.vegetarian
+        : DietPattern.omnivore;
+  }
+
   UserProfile copyWith({
     String? name,
     String? age,
     Gender? gender,
     HealthGoal? goal,
-    Set<CuisinePreference>? cuisines,
+    List<CuisinePreference>? cuisines,
     Set<Allergy>? allergies,
     List<String>? customRestrictions,
+    double? heightCm,
+    double? weightKg,
+    double? targetWeightKg,
+    ActivityLevel? activityLevel,
+    DietPattern? dietPattern,
+    Set<Restriction>? restrictions,
+    Set<Condition>? conditions,
+    CycleProfile? cycle,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -55,6 +133,14 @@ class UserProfile {
       cuisines: cuisines ?? this.cuisines,
       allergies: allergies ?? this.allergies,
       customRestrictions: customRestrictions ?? this.customRestrictions,
+      heightCm: heightCm ?? this.heightCm,
+      weightKg: weightKg ?? this.weightKg,
+      targetWeightKg: targetWeightKg ?? this.targetWeightKg,
+      activityLevel: activityLevel ?? this.activityLevel,
+      dietPattern: dietPattern ?? this.dietPattern,
+      restrictions: restrictions ?? this.restrictions,
+      conditions: conditions ?? this.conditions,
+      cycle: cycle ?? this.cycle,
     );
   }
 }
