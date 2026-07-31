@@ -1,572 +1,758 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_tag.dart';
-import '../../../core/widgets/app_text_field.dart';
-import '../../../core/widgets/section_header.dart';
-import '../../../core/widgets/selectable_chip.dart';
-import '../../../domain/entities/labs/lab_report.dart';
+import '../../../core/widgets/pressable_scale.dart';
+import '../../../core/widgets/segmented_control.dart';
 import '../../../domain/entities/nutrition/meal_entry.dart';
-import '../../../domain/entities/nutrition/nutrition_targets.dart';
-import '../../../domain/entities/profile/diet_pattern.dart';
+import '../../../features/correlation/engine_context.dart';
 import '../../providers/health_providers.dart';
+import '../../providers/insights_providers.dart';
 import '../../providers/labs_providers.dart';
-import '../../providers/notification_time_provider.dart';
 import '../../providers/nutrition_providers.dart';
+import '../../providers/settings_providers.dart';
 import '../../providers/user_profile_provider.dart';
-import '../../widgets/labs/biomarker_table.dart';
-import '../../widgets/labs/upload_report_actions.dart';
+import 'gmail_import_screen.dart';
+import 'main_shell.dart';
+import 'profile_edit_screen.dart';
 
-/// Profile and settings.
+/// Settings. Mirrors `app/(tabs)/settings.tsx`.
 ///
-/// The two fake sections are gone: a "Connected devices" table listing four
-/// vendors with hardcoded pills, and a blood-test history from a stub repository.
-/// In their place, the one thing that is actually true about telemetry on this
-/// device, and the reports the user has actually uploaded.
+/// Eight sections in RN's order: profile, Apple Health, Gmail, reference ranges,
+/// analysis window, which insights you see, demo data, your data.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(
+      padding: EdgeInsets.only(
+        top: AppSpacing.space1,
+        bottom: MainShell.bottomInsetFor(context),
+      ),
+      children: const [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.space6),
+          child: _Title(),
+        ),
+        _ProfileSection(),
+        _AppleHealthSection(),
+        _GmailSection(),
+        _ReferenceRangeSection(),
+        _AnalysisWindowSection(),
+        _RuleToggleSection(),
+        _DemoDataSection(),
+        _YourDataSection(),
+        _VersionFooter(),
+      ],
+    );
+  }
+}
+
+class _Title extends StatelessWidget {
+  const _Title();
+
+  @override
+  Widget build(BuildContext context) =>
+      Text('Settings', style: AppTextStyles.screenTitle);
+}
+
+/// Uppercase micro-label above each card, from RN's `SectionLabel`.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space6,
+        AppSpacing.space6 + AppSpacing.space1,
+        AppSpacing.space6,
+        AppSpacing.space3,
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: AppTextStyles.tag.copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.55,
+          color: AppColors.muted,
+        ),
+      ),
+    );
+  }
+}
+
+class _RowIcon extends StatelessWidget {
+  const _RowIcon(this.icon);
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.brand50,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Icon(icon, size: 20, color: AppColors.brand),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 1. Your profile
+// ---------------------------------------------------------------------------
+
+class _ProfileSection extends ConsumerWidget {
+  const _ProfileSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(userProfileProvider);
-    final labs = ref.watch(labsProvider);
-    final timeLabel = ref.watch(briefTimeLabelProvider);
-    final targets = ref.watch(nutritionTargetsProvider);
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            spacing: AppSpacing.space3,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Your profile'),
+        SurfaceCard(
+          padded: false,
+          child: Column(
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.accent900,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  profile.initial,
-                  style: AppTextStyles.h4.copyWith(
-                    color: AppColors.accent2_400,
+              PressableScale(
+                scaleTo: 0.99,
+                semanticLabel: 'Edit your profile',
+                onTap: () =>
+                    MainShell.push(context, const ProfileEditScreen()),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space5,
+                    vertical: AppSpacing.space4,
                   ),
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(profile.greetingName, style: AppTextStyles.h4),
-                    Text(
-                      '${profile.age.isNotEmpty ? '${profile.age} · ' : ''}'
-                      '${profile.goal.label}',
-                      style: AppTextStyles.muted.copyWith(fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppSpacing.space6),
-          const _BodyComposition(),
-
-          const SizedBox(height: AppSpacing.space6),
-          const _ActivityAndDiet(),
-
-          const SizedBox(height: AppSpacing.space6),
-          const SectionHeader(title: 'Health data'),
-          const _TelemetrySourceRow(),
-
-          const SizedBox(height: AppSpacing.space6),
-          SectionHeader(
-            title: 'Blood test history',
-            count: labs.reports.isEmpty ? null : labs.reports.length,
-          ),
-          if (labs.reports.isEmpty)
-            const UploadReportActions()
-          else
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: AppSpacing.space2,
-              children: [
-                for (final report in labs.reports)
-                  _ReportRow(report: report),
-                const SizedBox(height: AppSpacing.space2),
-                const UploadReportActions(),
-              ],
-            ),
-
-          const SizedBox(height: AppSpacing.space6),
-          const SectionHeader(title: 'Notifications'),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.space3),
-            decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(color: AppColors.divider, width: 2),
-                bottom: BorderSide(color: AppColors.divider, width: 2),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
+                    spacing: AppSpacing.space3,
                     children: [
-                      Text(
-                        'Morning brief time',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                      const _RowIcon(Icons.person_outline),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              profile.name.trim().isEmpty
+                                  ? 'Goal, diet and body'
+                                  : profile.name,
+                              style: AppTextStyles.cardTitle.copyWith(
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              [
+                                profile.goal.label,
+                                profile.effectiveDietPattern.label,
+                                if (profile.weightKg != null)
+                                  '${profile.weightKg!.round()} kg',
+                              ].join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.cardMeta.copyWith(
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        // The brief is composed on device, so this only ever
-                        // drives a local notification — say so rather than
-                        // implying a scheduled server job.
-                        'When to nudge you to read it',
-                        style: AppTextStyles.cardMeta,
+                      const Icon(
+                        Icons.chevron_right,
+                        size: 17,
+                        color: AppColors.faint,
                       ),
                     ],
                   ),
                 ),
-                Row(
-                  spacing: AppSpacing.space2,
-                  children: [
-                    AppButton.icon(
-                      leading: const Icon(Icons.remove, size: 16),
-                      onPressed: () => ref
-                          .read(notificationTimeIndexProvider.notifier)
-                          .decrement(),
-                    ),
-                    SizedBox(
-                      width: 70,
-                      child: Text(
-                        timeLabel,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.h6.copyWith(
-                          letterSpacing: 0,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    AppButton.icon(
-                      leading: const Icon(Icons.add, size: 16),
-                      onPressed: () => ref
-                          .read(notificationTimeIndexProvider.notifier)
-                          .increment(),
-                    ),
-                  ],
+              ),
+
+              if (profile.cuisines.isNotEmpty)
+                _CardFooter(
+                  child: Text(
+                    'Cuisines: '
+                    '${profile.cuisines.map((c) => c.label).join(', ')}',
+                    style: AppTextStyles.cardMeta.copyWith(fontSize: 12),
+                  ),
                 ),
-              ],
-            ),
+
+              if (!profile.canComputeTargets)
+                _CardFooter(
+                  child: Text(
+                    'Height, weight and age are missing — calorie and macro '
+                    'targets stay switched off until they are set.',
+                    style: AppTextStyles.cardBody.copyWith(
+                      fontSize: 12,
+                      height: 1.45,
+                      color: AppColors.borderline,
+                    ),
+                  ),
+                ),
+            ],
           ),
+        ),
+      ],
+    );
+  }
+}
 
-          if (targets != null) ...[
-            const SizedBox(height: AppSpacing.space6),
-            const SectionHeader(title: "Today's arithmetic"),
-            _TargetsBreakdown(),
-          ],
+class _CardFooter extends StatelessWidget {
+  const _CardFooter({required this.child});
 
-          const SizedBox(height: AppSpacing.space6),
-          const _DemoData(),
-          const SizedBox(height: AppSpacing.space4),
-        ],
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space5,
+        vertical: AppSpacing.space3,
       ),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.hairline)),
+      ),
+      child: child,
     );
   }
 }
 
-/// Height, weight and age. Every calorie, protein and hydration figure in the
-/// app derives from these, so the section says that outright — a user who
-/// understands why the field matters is far likelier to fill it in.
-class _BodyComposition extends ConsumerWidget {
-  const _BodyComposition();
+// ---------------------------------------------------------------------------
+// 2. Apple Health
+// ---------------------------------------------------------------------------
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(userProfileProvider);
-    final notifier = ref.read(userProfileProvider.notifier);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionHeader(title: 'Body'),
-        if (!profile.canComputeTargets)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.space3),
-            child: Text(
-              'Your targets are currently estimated from population averages. '
-              'Add your height and weight and every number in the app sharpens.',
-              style: AppTextStyles.cardBody.copyWith(height: 1.45),
-            ),
-          ),
-        Row(
-          spacing: AppSpacing.space3,
-          children: [
-            Expanded(
-              child: AppTextField(
-                label: 'Height (cm)',
-                value: profile.heightCm?.round().toString() ?? '',
-                placeholder: '172',
-                keyboardType: TextInputType.number,
-                onChanged: (value) => notifier.setBodyComposition(
-                  heightCm: double.tryParse(value),
-                  weightKg: profile.weightKg,
-                ),
-              ),
-            ),
-            Expanded(
-              child: AppTextField(
-                label: 'Weight (kg)',
-                value: profile.weightKg?.round().toString() ?? '',
-                placeholder: '68',
-                keyboardType: TextInputType.number,
-                onChanged: (value) => notifier.setBodyComposition(
-                  heightCm: profile.heightCm,
-                  weightKg: double.tryParse(value),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _ActivityAndDiet extends ConsumerWidget {
-  const _ActivityAndDiet();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(userProfileProvider);
-    final notifier = ref.read(userProfileProvider.notifier);
-    final targets = ref.watch(nutritionTargetsProvider);
-    final measured = targets?.energyBasis == EnergyBasis.measured;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionHeader(title: 'Activity'),
-        if (measured)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.space3),
-            child: Text(
-              'Your watch is reporting enough active energy that this setting is '
-              'no longer used — measured burn beats an activity multiplier every '
-              'time.',
-              style: AppTextStyles.cardBody.copyWith(height: 1.45),
-            ),
-          ),
-        Wrap(
-          spacing: AppSpacing.space2,
-          runSpacing: AppSpacing.space2,
-          children: [
-            for (final level in ActivityLevel.values)
-              SelectableChip(
-                label: level.label,
-                selected: profile.activityLevel == level,
-                onTap: () => notifier.setActivityLevel(level),
-              ),
-          ],
-        ),
-
-        const SizedBox(height: AppSpacing.space5),
-        const SectionHeader(title: 'Diet'),
-        Wrap(
-          spacing: AppSpacing.space2,
-          runSpacing: AppSpacing.space2,
-          children: [
-            for (final pattern in DietPattern.values)
-              SelectableChip(
-                label: pattern.label,
-                selected: profile.effectiveDietPattern == pattern,
-                onTap: () => notifier.setDietPattern(pattern),
-              ),
-          ],
-        ),
-
-        const SizedBox(height: AppSpacing.space5),
-        const SectionHeader(title: 'Preferences'),
-        Wrap(
-          spacing: AppSpacing.space2,
-          runSpacing: AppSpacing.space2,
-          children: [
-            for (final restriction in Restriction.values)
-              SelectableChip(
-                label: restriction.label,
-                selected: profile.restrictions.contains(restriction),
-                onTap: () => notifier.toggleRestriction(restriction),
-              ),
-          ],
-        ),
-
-        const SizedBox(height: AppSpacing.space5),
-        const SectionHeader(title: 'Conditions'),
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.space3),
-          child: Text(
-            'Used to tighten your carbohydrate and sugar targets. Not a '
-            'diagnosis, and nothing here is shared.',
-            style: AppTextStyles.cardBody.copyWith(height: 1.45),
-          ),
-        ),
-        Wrap(
-          spacing: AppSpacing.space2,
-          runSpacing: AppSpacing.space2,
-          children: [
-            for (final condition in Condition.values)
-              SelectableChip(
-                label: condition.label,
-                selected: profile.conditions.contains(condition),
-                onTap: () => notifier.toggleCondition(condition),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _TelemetrySourceRow extends ConsumerWidget {
-  const _TelemetrySourceRow();
+class _AppleHealthSection extends ConsumerWidget {
+  const _AppleHealthSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final source = ref.watch(telemetrySourceProvider);
-    final days = ref.watch(healthSeriesProvider).valueOrNull?.length ?? 0;
     final synthetic = source == TelemetrySource.synthetic;
+    final synced = syncLabel(ref.watch(lastSyncedAtProvider));
+    final days = ref.watch(healthSeriesProvider).valueOrNull?.length ?? 0;
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space4),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Apple Health'),
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Text(
-                  synthetic ? 'Sample telemetry' : 'Apple Health',
-                  style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
-                ),
-              ),
-              AppTag(
-                label: synthetic ? 'Sample data' : 'Connected',
-                variant: synthetic
-                    ? AppTagVariant.neutral
-                    : AppTagVariant.accent,
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            synthetic
-                ? '$days days of a deterministic sample series. Readiness, '
-                      'targets and the brief are computed from it for real — but '
-                      'it is not your data.'
-                : '$days days read from your health store. Read-only; nothing is '
-                      'written back.',
-            style: AppTextStyles.cardBody.copyWith(height: 1.45),
-          ),
-          if (synthetic) ...[
-            const SizedBox(height: AppSpacing.space3),
-            AppButton(
-              label: 'Connect Apple Health',
-              variant: AppButtonVariant.secondary,
-              block: true,
-              onPressed: () => requestHealthAccess(ref),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ReportRow extends ConsumerWidget {
-  const _ReportRow({required this.report});
-
-  final LabReport report;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final date = report.collectedAt ?? report.uploadedAt;
-    final flagged = report.flagged.length;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        shape: const Border(),
-        collapsedShape: const Border(),
-        tilePadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space4,
-        ),
-        childrenPadding: const EdgeInsets.fromLTRB(
-          AppSpacing.space4,
-          0,
-          AppSpacing.space4,
-          AppSpacing.space4,
-        ),
-        title: Text(
-          report.panelName ?? 'Blood panel',
-          style: AppTextStyles.bodySmall.copyWith(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(
-          '${DateFormat('d MMM yyyy').format(date)} · '
-          '${report.biomarkers.length} markers'
-          '${flagged == 0 ? '' : ' · $flagged to watch'}',
-          style: AppTextStyles.cardMeta,
-        ),
-        children: [
-          for (final warning in report.warnings)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.space2),
-              child: Text(
-                warning,
-                style: AppTextStyles.cardMeta.copyWith(height: 1.45),
-              ),
-            ),
-          BiomarkerTable(report: report),
-          const SizedBox(height: AppSpacing.space3),
-          AppButton(
-            label: 'Delete this report',
-            variant: AppButtonVariant.danger,
-            block: true,
-            onPressed: () => ref.read(labsProvider.notifier).remove(report.id),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Shows the arithmetic behind today's targets.
-///
-/// Not a debug panel — it is the answer to "why does it think I should eat
-/// 2,180 calories", which is the first question anyone asks of a number like
-/// that, and the reason most calorie apps get closed.
-class _TargetsBreakdown extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final targets = ref.watch(nutritionTargetsProvider);
-    if (targets == null) return const SizedBox.shrink();
-
-    final rows = <(String, String)>[
-      (
-        'Maintenance',
-        '${targets.maintenanceCalories} kcal · '
-            '${targets.energyBasis == EnergyBasis.measured ? 'measured' : 'estimated'}',
-      ),
-      ('Today’s target', '${targets.calories} kcal'),
-      ('Protein', '${targets.macros.proteinG} g'),
-      ('Carbs', '${targets.macros.carbsG} g'),
-      ('Fat', '${targets.macros.fatG} g'),
-      ('Fibre', '${targets.macros.fibreG} g'),
-      ('Added sugar ceiling', '${targets.addedSugarCeilingG} g'),
-      ('Water', '${(targets.waterMl / 1000).toStringAsFixed(1)} L'),
-      ('Steps', '${targets.stepTarget}'),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (final row in rows)
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space4,
-                vertical: AppSpacing.space2 + 2,
-              ),
-              decoration: BoxDecoration(
-                border: row == rows.last
-                    ? null
-                    : const Border(
-                        bottom: BorderSide(
-                          color: AppColors.hairline,
-                          width: 1,
-                        ),
-                      ),
-              ),
-              child: Row(
+              Row(
+                spacing: AppSpacing.space3,
                 children: [
+                  const _RowIcon(Icons.favorite_outline),
                   Expanded(
-                    child: Text(row.$1, style: AppTextStyles.bodySmall),
-                  ),
-                  Text(
-                    row.$2,
-                    style: AppTextStyles.h6.copyWith(
-                      fontSize: 13,
-                      letterSpacing: 0,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'HealthKit access',
+                          style: AppTextStyles.cardTitle.copyWith(fontSize: 15),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          synced ?? 'Never synced',
+                          style: AppTextStyles.cardMeta.copyWith(fontSize: 12),
+                        ),
+                      ],
                     ),
+                  ),
+                  AppTag(
+                    label: synthetic ? 'Sample data' : 'Connected',
+                    variant: synthetic
+                        ? AppTagVariant.neutral
+                        : AppTagVariant.accent,
                   ),
                 ],
               ),
-            ),
-        ],
-      ),
+              if (synthetic) ...[
+                const SizedBox(height: AppSpacing.space3),
+                Text(
+                  '$days days of a deterministic sample series. Readiness, '
+                  'targets and every finding are computed from it for real — '
+                  'but it is not your data.',
+                  style: AppTextStyles.cardBody.copyWith(
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                AppButton(
+                  label: 'Connect Apple Health',
+                  block: true,
+                  onPressed: () => requestHealthAccess(ref),
+                ),
+              ] else ...[
+                const SizedBox(height: AppSpacing.space3),
+                Text(
+                  '$days days read from your health store. Read-only; nothing '
+                  'is written back, and none of it leaves this device.',
+                  style: AppTextStyles.cardBody.copyWith(
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _DemoData extends ConsumerWidget {
-  const _DemoData();
+// ---------------------------------------------------------------------------
+// 3. Gmail import
+// ---------------------------------------------------------------------------
+
+class _GmailSection extends StatelessWidget {
+  const _GmailSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Gmail import'),
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                spacing: AppSpacing.space3,
+                children: [
+                  const _RowIcon(Icons.mail_outline),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mailbox access',
+                          style: AppTextStyles.cardTitle.copyWith(fontSize: 15),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Not available in this build',
+                          style: AppTextStyles.cardMeta.copyWith(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const AppTag(label: 'Off', variant: AppTagVariant.neutral),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space3),
+              Text(
+                'The plan is read-only access, used to find lab reports from '
+                'known diagnostics providers. It needs a Google Restricted-scope '
+                'review and a server to exchange the token, neither of which '
+                'this build has.',
+                style: AppTextStyles.cardBody.copyWith(
+                  fontSize: 12,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              AppButton(
+                label: 'Why not?',
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: () =>
+                    MainShell.push(context, const GmailImportScreen()),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Reference ranges
+// ---------------------------------------------------------------------------
+
+class _ReferenceRangeSection extends ConsumerWidget {
+  const _ReferenceRangeSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sex = ref.watch(biologicalSexProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Reference ranges'),
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Several biomarkers — ferritin, haemoglobin, HDL, testosterone, '
+                'ALT — have sex-specific reference intervals. This only affects '
+                'how values are flagged.',
+                style: AppTextStyles.cardBody.copyWith(
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              SegmentedControl<BiologicalSex>(
+                options: const [
+                  SegmentedOption(
+                    value: BiologicalSex.female,
+                    label: 'Female',
+                  ),
+                  SegmentedOption(value: BiologicalSex.male, label: 'Male'),
+                  SegmentedOption(
+                    value: BiologicalSex.unspecified,
+                    label: 'Prefer not to say',
+                  ),
+                ],
+                selected: sex,
+                onChanged: (next) =>
+                    ref.read(settingsProvider.notifier).setSex(next),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. Analysis window
+// ---------------------------------------------------------------------------
+
+class _AnalysisWindowSection extends ConsumerWidget {
+  const _AnalysisWindowSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final window = ref.watch(analysisWindowProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Analysis window'),
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'How far back correlations look. Longer windows find weaker '
+                'signals but respond more slowly to a change you have just made.',
+                style: AppTextStyles.cardBody.copyWith(
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              SegmentedControl<AnalysisWindow>(
+                options: [
+                  for (final w in AnalysisWindow.values)
+                    SegmentedOption(value: w, label: '${w.days} days'),
+                ],
+                selected: window,
+                onChanged: (next) => ref
+                    .read(settingsProvider.notifier)
+                    .setAnalysisWindow(next),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 6. Which insights you see
+// ---------------------------------------------------------------------------
+
+class _RuleToggleSection extends ConsumerWidget {
+  const _RuleToggleSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rules = ref.watch(allRulesProvider);
+    final muted = ref.watch(settingsProvider).mutedRuleIds;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Which insights you see'),
+        SurfaceCard(
+          padded: false,
+          child: Column(
+            children: [
+              for (final rule in rules)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space5,
+                    vertical: AppSpacing.space2,
+                  ),
+                  decoration: BoxDecoration(
+                    border: rule == rules.last
+                        ? null
+                        : const Border(
+                            bottom: BorderSide(color: AppColors.hairline),
+                          ),
+                  ),
+                  child: Row(
+                    spacing: AppSpacing.space3,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          rule.name,
+                          maxLines: 2,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: !muted.contains(rule.id),
+                        activeTrackColor: AppColors.brand,
+                        onChanged: (_) => ref
+                            .read(settingsProvider.notifier)
+                            .toggleRule(rule.id),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 7. Demo data
+// ---------------------------------------------------------------------------
+
+class _DemoDataSection extends ConsumerWidget {
+  const _DemoDataSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final log = ref.watch(mealLogProvider);
     final seeded = log.meals.any((m) => m.source == MealSource.seed);
+    final mealCount = log.meals.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: AppSpacing.space2,
       children: [
-        const SectionHeader(title: 'Demo data'),
-        Text(
-          seeded
-              ? 'Your food log contains a seeded week so the weekly pattern '
-                    'analysis has something to find. Clearing it leaves only what '
-                    'you log yourself.'
-              : 'Your food log contains only your own entries.',
-          style: AppTextStyles.cardBody.copyWith(height: 1.45),
-        ),
-        const SizedBox(height: AppSpacing.space1),
-        AppButton(
-          label: seeded ? 'Clear the seeded week' : 'Load the demo week',
-          variant: AppButtonVariant.secondary,
-          block: true,
-          onPressed: () => seeded
-              ? ref.read(mealLogProvider.notifier).clear()
-              : ref.read(mealLogProvider.notifier).reseed(),
+        const _SectionLabel('Demo data'),
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                spacing: AppSpacing.space3,
+                children: [
+                  const _RowIcon(Icons.science_outlined),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Demo persona',
+                          style: AppTextStyles.cardTitle.copyWith(fontSize: 15),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${seeded ? 'Active' : 'Off'} · $mealCount meal'
+                          '${mealCount == 1 ? '' : 's'} logged',
+                          style: AppTextStyles.cardMeta.copyWith(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AppTag(
+                    label: seeded ? 'On' : 'Off',
+                    variant: seeded
+                        ? AppTagVariant.accent
+                        : AppTagVariant.neutral,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space3),
+              Text(
+                'Loads a week of vegetarian-leaning meals and hydration, '
+                'composed so the weekly pattern analysis has something real to '
+                'find — added sugar clears its ceiling on four of the seven '
+                'days. It overwrites the food log on this device.',
+                style: AppTextStyles.cardBody.copyWith(
+                  fontSize: 12,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: AppButton(
+                  label: seeded ? 'Remove demo data' : 'Load demo persona',
+                  variant: seeded
+                      ? AppButtonVariant.danger
+                      : AppButtonVariant.primary,
+                  size: AppButtonSize.sm,
+                  onPressed: () => seeded
+                      ? ref.read(mealLogProvider.notifier).clear()
+                      : ref.read(mealLogProvider.notifier).reseed(),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 8. Your data
+// ---------------------------------------------------------------------------
+
+class _YourDataSection extends ConsumerWidget {
+  const _YourDataSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reportCount = ref.watch(labsProvider).reports.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Your data'),
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: AppSpacing.space3,
+                children: [
+                  const Icon(
+                    Icons.verified_user_outlined,
+                    size: 18,
+                    color: AppColors.optimal,
+                  ),
+                  Expanded(
+                    child: Text(
+                      'Telemetry never leaves your device, and neither do your '
+                      'lab results — there is no parsing service configured in '
+                      'this build, so nothing is uploaded at all.',
+                      style: AppTextStyles.cardBody.copyWith(
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                margin: const EdgeInsets.only(top: AppSpacing.space4),
+                padding: const EdgeInsets.only(top: AppSpacing.space4),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: AppColors.hairline),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$reportCount lab report'
+                      '${reportCount == 1 ? '' : 's'} stored on this device',
+                      style: AppTextStyles.cardMeta.copyWith(fontSize: 12),
+                    ),
+                    const SizedBox(height: AppSpacing.space3),
+                    AppButton(
+                      label: 'Erase all local data',
+                      variant: AppButtonVariant.danger,
+                      size: AppButtonSize.sm,
+                      leading: const Icon(Icons.delete_outline, size: 14),
+                      onPressed: () => _confirmErase(context, ref),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmErase(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Erase all local data?'),
+        content: const Text(
+          'This deletes every stored lab report, your food log and your '
+          'profile from this device. It cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Erase'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await ref.read(labsProvider.notifier).clear();
+    await ref.read(mealLogProvider.notifier).clear();
+    ref.read(settingsProvider.notifier).reset();
+    ref.read(userProfileProvider.notifier).reset();
+  }
+}
+
+class _VersionFooter extends StatelessWidget {
+  const _VersionFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space6,
+        AppSpacing.space8,
+        AppSpacing.space6,
+        0,
+      ),
+      child: Text(
+        'Agentrix Health 1.0.0 · Not a medical device',
+        textAlign: TextAlign.center,
+        style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
+      ),
     );
   }
 }

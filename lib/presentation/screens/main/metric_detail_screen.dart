@@ -6,495 +6,472 @@ import '../../../core/stats/stats.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../core/util/iso_day.dart';
-import '../../../core/widgets/charts/day_column_chart.dart';
-import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_tag.dart';
+import '../../../core/widgets/sparkline.dart';
 import '../../../domain/entities/health/metric_key.dart';
 import '../../../domain/entities/insights/correlation.dart';
-import '../../../features/correlation/engine_context.dart';
 import '../../providers/health_providers.dart';
-import '../../providers/insights_providers.dart';
+import 'main_shell.dart';
 
-/// One metric, in depth. Ported from `app/metric/[metric].tsx`.
+/// One metric in depth. Mirrors `app/metric/[metric].tsx`.
 ///
-/// Answers the three questions a tile cannot: what has it done over the window,
-/// how does that compare with the user's own baseline, and what else in their
-/// data moves with it. The last one is the reason this screen exists rather than
-/// just being a bigger chart.
-class MetricDetailScreen extends ConsumerStatefulWidget {
+/// Answers the three questions a tile cannot: what it has done over the window,
+/// how that compares with the user's own baseline, and what else in their data
+/// moves with it. The last is why this screen exists rather than just being a
+/// bigger chart.
+class MetricDetailScreen extends ConsumerWidget {
   const MetricDetailScreen({super.key, required this.metric});
 
   final MetricKey metric;
 
-  @override
-  ConsumerState<MetricDetailScreen> createState() =>
-      _MetricDetailScreenState();
-}
-
-class _MetricDetailScreenState extends ConsumerState<MetricDetailScreen> {
-  int? _selected;
-
-  /// Days shown in the column chart. The engine's window is 35 days, but 35
-  /// columns on a phone is a smear — two weeks is the most that stays readable.
-  static const int _visibleDays = 14;
-
-  @override
-  Widget build(BuildContext context) {
-    final meta = metricMeta[widget.metric]!;
-    final context_ = ref.watch(engineContextProvider);
-    final series = ref.watch(healthSeriesProvider).valueOrNull;
-
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      appBar: AppBar(
-        backgroundColor: AppColors.canvas,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        title: Text(meta.label, style: AppTextStyles.h5),
-      ),
-      body: context_ == null || series == null
-          ? const Center(child: CircularProgressIndicator())
-          : _Body(
-              metric: widget.metric,
-              engineContext: context_,
-              selected: _selected,
-              visibleDays: _visibleDays,
-              onSelect: (index) => setState(() => _selected = index),
-            ),
-    );
-  }
-}
-
-class _Body extends ConsumerWidget {
-  const _Body({
-    required this.metric,
-    required this.engineContext,
-    required this.selected,
-    required this.visibleDays,
-    required this.onSelect,
-  });
-
-  final MetricKey metric;
-  final EngineContext engineContext;
-  final int? selected;
-  final int visibleDays;
-  final ValueChanged<int> onSelect;
+  /// Metrics the selected one is tested against, each with the lag its
+  /// physiology implies — load affects tomorrow's HRV, not today's.
+  static const _comparisons = [
+    (metric: MetricKey.sleepDuration, lag: 0, label: 'Same-night sleep'),
+    (metric: MetricKey.activeEnergy, lag: 1, label: "Previous day's load"),
+    (metric: MetricKey.steps, lag: 1, label: "Previous day's steps"),
+    (
+      metric: MetricKey.sleepEfficiency,
+      lag: 0,
+      label: 'Same-night sleep quality',
+    ),
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final meta = metricMeta[metric]!;
-    final stats = engineContext.metrics[metric]!;
-    final days = engineContext.days;
+    final engineContext = ref.watch(engineContextProvider);
+    final stats = engineContext?.metrics[metric];
+    final values = stats?.values ?? const <double?>[];
+    final present = compact(values);
 
-    final start = days.length > visibleDays ? days.length - visibleDays : 0;
-    final windowDays = days.sublist(start);
-    final windowValues = stats.values.sublist(start);
-    final selectedIndex = (selected ?? windowValues.length - 1).clamp(
-      0,
-      windowValues.length - 1,
-    );
+    String format(double? value) {
+      if (value == null || !value.isFinite) return '—';
+      if (metric == MetricKey.steps) return _thousands(value);
+      return value.toStringAsFixed(meta.precision);
+    }
 
-    String format(double value) =>
-        '${value.toStringAsFixed(meta.precision)}${meta.unit.isEmpty ? '' : ' ${meta.unit}'}';
+    final correlations = engineContext == null
+        ? const <({String label, Correlation result, MetricKey metric})>[]
+        : _comparisons
+              .where((c) => c.metric != metric)
+              .map(
+                (c) => (
+                  label: c.label,
+                  metric: c.metric,
+                  result: engineContext.correlate(c.metric, metric, c.lag),
+                ),
+              )
+              .where(
+                (c) =>
+                    c.result != null &&
+                    c.result!.strength != CorrelationStrength.none,
+              )
+              .map(
+                (c) => (label: c.label, metric: c.metric, result: c.result!),
+              )
+              .toList();
+
+    final days = engineContext?.days ?? const <IsoDay>[];
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space5,
-        0,
-        AppSpacing.space5,
-        AppSpacing.space8,
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.space6,
+        AppSpacing.space6,
+        AppSpacing.space6,
+        MainShell.bottomInsetFor(context),
       ),
       children: [
-        _Hero(metric: metric, stats: stats, format: format),
-
-        const SizedBox(height: AppSpacing.space5),
-        SectionHeader(title: 'Last ${windowDays.length} days'),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space4),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.hairline),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-          ),
-          child: DayColumnChart(
-            values: windowValues,
-            labels: [
-              for (final day in windowDays)
-                DateFormat('E').format(fromIsoDay(day))[0],
-            ],
-            selectedIndex: selectedIndex,
-            formatValue: format,
-            onSelect: onSelect,
-          ),
-        ),
-
-        const SizedBox(height: AppSpacing.space5),
-        const SectionHeader(title: 'Against your baseline'),
-        _BaselineTable(stats: stats, format: format),
-
-        const SizedBox(height: AppSpacing.space5),
-        _Correlations(metric: metric, engineContext: engineContext),
-
-        const SizedBox(height: AppSpacing.space5),
-        _RelatedInsights(metric: metric),
-      ],
-    );
-  }
-}
-
-class _Hero extends StatelessWidget {
-  const _Hero({
-    required this.metric,
-    required this.stats,
-    required this.format,
-  });
-
-  final MetricKey metric;
-  final MetricStats stats;
-  final String Function(double) format;
-
-  @override
-  Widget build(BuildContext context) {
-    final delta = stats.deltaPct;
-    final polarity = metricPolarity[metric]!;
-    // "Better" is direction-aware: a falling resting heart rate is good news
-    // and a falling HRV is not, and one colour for both would mislead.
-    final improving = delta == null
-        ? null
-        : polarity == MetricPolarity.higherIsBetter
-        ? delta > 0
-        : delta < 0;
-
-    final colour = improving == null
-        ? AppColors.muted
-        : (improving ? AppColors.optimal : AppColors.borderline);
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space5),
-      decoration: BoxDecoration(
-        color: AppColors.brand900,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'LATEST',
-            style: AppTextStyles.tag.copyWith(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-              color: AppColors.accent2_400,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            stats.latest == null ? '—' : format(stats.latest!),
-            style: AppTextStyles.metricLarge.copyWith(
-              color: AppColors.onBrand,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.space2),
-          if (delta == null)
-            Text(
-              stats.baselineDays < minBaselineDays
-                  ? 'Needs ${minBaselineDays - stats.baselineDays} more days of '
-                        'baseline before a comparison means anything.'
-                  : 'No baseline comparison available.',
-              style: AppTextStyles.cardBody.copyWith(
-                color: AppColors.onBrandMuted,
-                height: 1.45,
-              ),
-            )
-          else
-            Row(
-              spacing: AppSpacing.space2,
-              children: [
-                Icon(
-                  delta > 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                  size: 14,
-                  color: colour,
-                ),
-                Expanded(
-                  child: Text(
-                    '${delta.abs().round()}% '
-                    '${delta > 0 ? 'above' : 'below'} your 28-day baseline'
-                    '${improving == false ? ' — worth watching' : ''}',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      fontSize: 13,
-                      color: AppColors.onBrandMuted,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BaselineTable extends StatelessWidget {
-  const _BaselineTable({required this.stats, required this.format});
-
-  final MetricStats stats;
-  final String Function(double) format;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = <(String, String)>[
-      (
-        'Last 7 days',
-        stats.recentMean == null ? '—' : format(stats.recentMean!),
-      ),
-      (
-        '28-day baseline',
-        stats.baselineMean == null ? '—' : format(stats.baselineMean!),
-      ),
-      (
-        'Trend',
-        stats.slopePerDay.abs() < 0.001
-            ? 'flat'
-            : '${stats.slopePerDay > 0 ? '+' : ''}'
-                  '${stats.slopePerDay.toStringAsFixed(2)} / day',
-      ),
-      ('Latest vs baseline', '${stats.z.toStringAsFixed(1)} SD'),
-      (
-        'Coverage',
-        '${(stats.coverage * 100).round()}% of days have data',
-      ),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (final row in rows)
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space4,
-                vertical: AppSpacing.space3,
-              ),
-              decoration: BoxDecoration(
-                border: row == rows.last
-                    ? null
-                    : const Border(
-                        bottom: BorderSide(
-                          color: AppColors.hairline,
-                          width: 1,
-                        ),
-                      ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(row.$1, style: AppTextStyles.bodySmall),
-                  ),
-                  Text(
-                    row.$2,
-                    style: AppTextStyles.h6.copyWith(
-                      fontSize: 13,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// What else in the user's data moves with this metric.
-///
-/// Every pair the engine can compute is shown, including the null results —
-/// "no measurable link" is a real answer, and hiding it would leave only the
-/// flattering ones.
-class _Correlations extends StatelessWidget {
-  const _Correlations({required this.metric, required this.engineContext});
-
-  final MetricKey metric;
-  final EngineContext engineContext;
-
-  @override
-  Widget build(BuildContext context) {
-    final others = MetricKey.values.where((k) => k != metric).toList();
-    final pairs = <(MetricKey, Correlation?)>[
-      for (final other in others) (other, engineContext.correlate(metric, other)),
-    ];
-
-    final ranked = [...pairs]
-      ..sort((a, b) {
-        final aStrong = a.$2?.strength ?? CorrelationStrength.none;
-        final bStrong = b.$2?.strength ?? CorrelationStrength.none;
-        return bStrong.index.compareTo(aStrong.index);
-      });
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionHeader(title: 'What moves with it'),
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.space3),
-          child: Text(
-            'Pearson correlation across the window, same day. A link needs at '
-            'least 10 paired days and a significant p-value before it is called '
-            'anything.',
-            style: AppTextStyles.cardBody.copyWith(height: 1.45),
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.hairline),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (final pair in ranked)
-                _CorrelationRow(
-                  other: pair.$1,
-                  correlation: pair.$2,
-                  isLast: pair == ranked.last,
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CorrelationRow extends StatelessWidget {
-  const _CorrelationRow({
-    required this.other,
-    required this.correlation,
-    required this.isLast,
-  });
-
-  final MetricKey other;
-  final Correlation? correlation;
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) {
-    final meta = metricMeta[other]!;
-    final link = correlation;
-    final hasLink = link != null && link.strength != CorrelationStrength.none;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space4,
-        vertical: AppSpacing.space3,
-      ),
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : const Border(
-                bottom: BorderSide(color: AppColors.hairline, width: 1),
-              ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  meta.label,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  link == null
-                      ? 'Not enough paired days'
-                      : hasLink
-                      ? '${link.strength.name} ${link.direction.name} link · '
-                            'n = ${link.n}'
-                      : 'No measurable link · n = ${link.n}',
-                  style: AppTextStyles.cardMeta.copyWith(fontSize: 10),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            link == null ? '—' : 'r = ${link.r}',
-            style: AppTextStyles.h6.copyWith(
-              fontSize: 13,
-              letterSpacing: 0,
-              color: hasLink ? AppColors.ink : AppColors.faint,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Findings that cite this metric, so the drilldown connects back to the plan.
-class _RelatedInsights extends ConsumerWidget {
-  const _RelatedInsights({required this.metric});
-
-  final MetricKey metric;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final related = ref
-        .watch(insightsProvider)
-        .where(
-          (insight) => insight.evidence.correlations.any(
-            (c) => c.metric == metric,
-          ),
-        )
-        .toList();
-
-    if (related.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(title: 'Findings citing this', count: related.length),
-        Column(
-          spacing: AppSpacing.space2,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final insight in related)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.space4),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.hairline),
-                  borderRadius: BorderRadius.circular(AppRadius.card),
-                ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.space4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      insight.title,
-                      style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
+                      meta.label,
+                      style: AppTextStyles.h3.copyWith(fontSize: 26),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
-                      insight.summary,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.cardBody.copyWith(height: 1.45),
+                      '${values.length} days · ${present.length} with data',
+                      style: AppTextStyles.cardBody,
                     ),
                   ],
                 ),
               ),
+            ),
+            AppButton.icon(
+              leading: const Icon(Icons.close, size: 16),
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
           ],
         ),
+
+        const SizedBox(height: AppSpacing.space6),
+
+        // HERO — latest, delta and the whole window as a filled sparkline.
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _MicroLabel('Latest'),
+                        const SizedBox(height: 4),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          spacing: 4,
+                          children: [
+                            Text(
+                              format(stats?.latest),
+                              style: AppTextStyles.metric,
+                            ),
+                            if (meta.unit.isNotEmpty)
+                              Text(
+                                meta.unit,
+                                style: AppTextStyles.cardBody.copyWith(
+                                  fontSize: 14,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  _DeltaBadge(
+                    deltaPct: stats?.deltaPct,
+                    higherIsBetter:
+                        metricPolarity[metric] == MetricPolarity.higherIsBetter,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space5),
+              Sparkline(
+                values: values,
+                color: AppColors.ink,
+                height: 110,
+                strokeWidth: 2.5,
+                filled: true,
+              ),
+              if (days.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.space2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        DateFormat('d MMM').format(fromIsoDay(days.first)),
+                        style: AppTextStyles.cardMeta.copyWith(fontSize: 10),
+                      ),
+                      Text(
+                        DateFormat('d MMM').format(fromIsoDay(days.last)),
+                        style: AppTextStyles.cardMeta.copyWith(fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: AppSpacing.space3),
+        Row(
+          spacing: AppSpacing.space3,
+          children: [
+            Expanded(
+              child: SurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _MicroLabel('7-day mean'),
+                    const SizedBox(height: 6),
+                    Text(
+                      format(stats?.recentMean),
+                      style: AppTextStyles.metricSmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: SurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _MicroLabel('28-day baseline'),
+                    const SizedBox(height: 6),
+                    Text(
+                      format(stats?.baselineMean),
+                      style: AppTextStyles.metricSmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: AppSpacing.space3),
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _MicroLabel('Distribution'),
+              const SizedBox(height: AppSpacing.space3),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (final item in <(String, double?)>[
+                    ('Min', present.isEmpty ? null : present.reduce(_min)),
+                    ('Median', present.isEmpty ? null : median(present)),
+                    ('Mean', present.isEmpty ? null : mean(present)),
+                    ('Max', present.isEmpty ? null : present.reduce(_max)),
+                    ('SD', present.length > 1 ? stdDev(present) : null),
+                  ])
+                    Column(
+                      children: [
+                        Text(
+                          item.$1.toUpperCase(),
+                          style: AppTextStyles.cardMeta.copyWith(
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          format(item.$2),
+                          style: AppTextStyles.h6.copyWith(
+                            fontSize: 15,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: AppSpacing.space6 + AppSpacing.space1),
+        Text(
+          'WHAT MOVES THIS METRIC',
+          style: AppTextStyles.tag.copyWith(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.55,
+            color: AppColors.muted,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space3),
+
+        if (correlations.isEmpty)
+          SurfaceCard(
+            child: Text(
+              'No statistically meaningful relationship found yet. '
+              'Correlations need at least 10 paired days and a p-value under '
+              '0.05 before we will show them — weak links on thin data are '
+              'worse than none.',
+              style: AppTextStyles.cardBody.copyWith(
+                fontSize: 13,
+                height: 1.46,
+              ),
+            ),
+          )
+        else
+          for (final entry in correlations)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.space3),
+              child: _CorrelationCard(
+                label: entry.label,
+                other: entry.metric,
+                selected: metric,
+                result: entry.result,
+              ),
+            ),
+
+        const SizedBox(height: AppSpacing.space4),
+        Text(
+          'Correlation is not causation. These relationships describe your own '
+          'history and can be confounded by anything not measured here.',
+          textAlign: TextAlign.center,
+          style: AppTextStyles.cardMeta.copyWith(fontSize: 11, height: 1.4),
+        ),
       ],
+    );
+  }
+}
+
+double _min(double a, double b) => a < b ? a : b;
+double _max(double a, double b) => a > b ? a : b;
+
+String _thousands(num value) {
+  final digits = value.round().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i += 1) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}
+
+class _MicroLabel extends StatelessWidget {
+  const _MicroLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      style: AppTextStyles.tag.copyWith(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1,
+        color: AppColors.muted,
+      ),
+    );
+  }
+}
+
+/// Direction-aware: a falling resting heart rate is good news and a falling HRV
+/// is not, so one colour for "down" would mislead on half the metrics.
+class _DeltaBadge extends StatelessWidget {
+  const _DeltaBadge({required this.deltaPct, required this.higherIsBetter});
+
+  final double? deltaPct;
+  final bool higherIsBetter;
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = deltaPct;
+    if (delta == null) {
+      return const AppTag(label: 'No baseline', variant: AppTagVariant.neutral);
+    }
+
+    final rising = delta > 0;
+    final good = rising == higherIsBetter;
+    final colour = good ? AppColors.optimal : AppColors.borderline;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: colour.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 3,
+        children: [
+          Icon(
+            rising ? Icons.arrow_upward : Icons.arrow_downward,
+            size: 12,
+            color: colour,
+          ),
+          Text(
+            '${delta.abs().round()}%',
+            style: AppTextStyles.cardMeta.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: colour,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CorrelationCard extends StatelessWidget {
+  const _CorrelationCard({
+    required this.label,
+    required this.other,
+    required this.selected,
+    required this.result,
+  });
+
+  final String label;
+  final MetricKey other;
+  final MetricKey selected;
+  final Correlation result;
+
+  @override
+  Widget build(BuildContext context) {
+    final strengthColour = switch (result.strength) {
+      CorrelationStrength.strong => AppColors.optimal,
+      CorrelationStrength.moderate => AppColors.normal,
+      _ => AppColors.borderline,
+    };
+
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: strengthColour.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  result.strength.name,
+                  style: AppTextStyles.cardMeta.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: strengthColour,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space2),
+          Text(
+            '${metricMeta[other]!.label} '
+            '${result.direction == CorrelationDirection.positive ? 'rises with' : 'moves against'} '
+            'your ${metricMeta[selected]!.short.toLowerCase()} across '
+            '${result.n} paired days'
+            '${result.lagDays > 0 ? ' at a ${result.lagDays}-day lag' : ''}.',
+            style: AppTextStyles.cardBody.copyWith(height: 1.5),
+          ),
+          const SizedBox(height: 6),
+          // r, p and n together: an r of 0.6 over 11 days and the same r over 60
+          // are very different claims, and hiding n is how correlation UIs
+          // mislead.
+          Text(
+            'r = ${result.r} · '
+            'p = ${result.p < 0.001 ? '<0.001' : result.p} · '
+            'n = ${result.n}',
+            style: AppTextStyles.cardMeta.copyWith(
+              fontSize: 11,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

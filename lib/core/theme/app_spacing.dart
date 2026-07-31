@@ -14,8 +14,12 @@ abstract final class AppSpacing {
 /// `rounded-pill` (999) are the two the React Native app actually reaches for;
 /// the rest fill in the smaller steps.
 abstract final class AppRadius {
-  static const double sm = 10;
+  /// `rounded-xl` — the small tinted icon tiles inside cards.
+  static const double sm = 12;
+
+  /// `rounded-2xl` — notices, inline banners, the icon tiles in headers.
   static const double md = 16;
+
   static const double lg = 24;
 
   /// `rounded-card` — every surface in the card family.

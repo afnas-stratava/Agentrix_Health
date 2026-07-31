@@ -1,3 +1,6 @@
+import 'package:flutter/painting.dart' show Color;
+
+import '../../../core/theme/app_colors.dart';
 import '../labs/biomarker.dart';
 import 'correlation.dart';
 
@@ -171,8 +174,16 @@ extension InsightSeverityCopy on InsightSeverity {
   String get label => switch (this) {
     InsightSeverity.urgent => 'See a clinician',
     InsightSeverity.action => 'Act on this',
-    InsightSeverity.watch => 'Worth watching',
-    InsightSeverity.info => 'For information',
+    InsightSeverity.watch => 'Keep an eye on',
+    InsightSeverity.info => 'For context',
+  };
+
+  /// The on-canvas status colour for this severity.
+  Color get color => switch (this) {
+    InsightSeverity.urgent => AppColors.critical,
+    InsightSeverity.action => AppColors.abnormal,
+    InsightSeverity.watch => AppColors.borderline,
+    InsightSeverity.info => AppColors.normal,
   };
 
   /// Ranking weight. Severity always outranks score, so a referral never sits

@@ -24,14 +24,15 @@ enum AnalysisWindow {
 
   static AnalysisWindow fromDays(int days) => AnalysisWindow.values.firstWhere(
     (w) => w.days == days,
-    orElse: () => AnalysisWindow.sixty,
+    orElse: () => AnalysisWindow.ninety,
   );
 }
 
 class Settings {
   const Settings({
     this.sex = BiologicalSex.unspecified,
-    this.analysisWindow = AnalysisWindow.sixty,
+    // 90 days, matching `settings.store.ts`.
+    this.analysisWindow = AnalysisWindow.ninety,
     this.mutedRuleIds = const {},
     this.dismissedInsightIds = const {},
   });
@@ -70,7 +71,7 @@ class Settings {
       orElse: () => BiologicalSex.unspecified,
     ),
     analysisWindow: AnalysisWindow.fromDays(
-      (json['analysisWindowDays'] as num?)?.toInt() ?? 60,
+      (json['analysisWindowDays'] as num?)?.toInt() ?? 90,
     ),
     mutedRuleIds:
         (json['mutedRuleIds'] as List?)?.whereType<String>().toSet() ??

@@ -6,9 +6,11 @@ import 'core/theme/app_shadows.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/providers/app_stage_provider.dart';
 import 'presentation/screens/main/main_shell.dart';
-import 'presentation/screens/onboarding/blood_test_screen.dart';
-import 'presentation/screens/onboarding/health_connect_screen.dart';
-import 'presentation/screens/onboarding/personal_info_screen.dart';
+import 'presentation/screens/onboarding/body_screen.dart';
+import 'presentation/screens/onboarding/diet_screen.dart';
+import 'presentation/screens/onboarding/goals_screen.dart';
+import 'presentation/screens/onboarding/permissions_screen.dart';
+import 'presentation/screens/onboarding/sex_screen.dart';
 import 'presentation/screens/onboarding/welcome_screen.dart';
 
 class AgentrixHealthApp extends StatelessWidget {
@@ -97,12 +99,20 @@ class _AppStageSwitcher extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stage = ref.watch(appStageProvider);
 
-    return switch (stage) {
-      AppStage.welcome => const WelcomeScreen(),
-      AppStage.form => const PersonalInfoScreen(),
-      AppStage.bloodTest => const BloodTestScreen(),
-      AppStage.healthConnect => const HealthConnectScreen(),
-      AppStage.main => const MainShell(),
-    };
+    if (stage == AppStage.main) return const MainShell();
+
+    // Plain canvas; the welcome step adds its own bloom, matching RN.
+    return ColoredBox(
+      color: AppColors.canvas,
+      child: switch (stage) {
+        AppStage.welcome => const WelcomeScreen(),
+        AppStage.sex => const SexScreen(),
+        AppStage.body => const BodyScreen(),
+        AppStage.goals => const GoalsScreen(),
+        AppStage.diet => const DietScreen(),
+        AppStage.permissions => const PermissionsScreen(),
+        AppStage.main => const SizedBox.shrink(),
+      },
+    );
   }
 }

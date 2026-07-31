@@ -1,36 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/util/iso_day.dart';
-import '../../../core/widgets/app_tag.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/fade_in.dart';
 import '../../../core/widgets/pressable_scale.dart';
 import '../../../core/widgets/screen_back_button.dart';
 import '../../../core/widgets/section_header.dart';
-import '../../../core/widgets/segmented_control.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../domain/entities/dining/restaurant.dart';
 import '../../../domain/entities/nutrition/food_definition.dart';
 import '../../../domain/entities/nutrition/meal_entry.dart';
 import '../../../features/dining/fixtures.dart';
-import '../../../features/dining/rank.dart';
 import '../../../features/nutrition/food_database.dart';
 import '../../providers/dining_providers.dart';
+import '../../providers/main_tab_provider.dart';
 import '../../providers/nutrition_providers.dart';
 import 'main_shell.dart';
 
-/// Nearby food, ranked by what is left in today's budget.
+/// Nearby restaurants, ranked by what is left in today's budget.
+/// Mirrors `app/dining.tsx`.
 ///
-/// The unit of recommendation is a *dish*, not a venue: "there is a healthy place
-/// 400 m away" is not actionable, and "order the dal tadka with two rotis — 34 g
-/// of protein, and it fits the 780 kcal you have left" is.
-///
-/// Two disclosures are load-bearing and always rendered: no menu was read (the
-/// dishes are cuisine-typical), and when the venue list is a curated fallback
-/// rather than live nearby results.
+/// The recommendation is the *dish*, not the venue — so every card leads with
+/// what to order and what it costs in macros, and the venue is context. Tapping
+/// a dish logs it, which closes the loop between "where should I eat" and the
+/// food diary that drives tomorrow's brief.
 class DiningScreen extends ConsumerWidget {
   const DiningScreen({super.key});
 
@@ -41,117 +40,129 @@ class DiningScreen extends ConsumerWidget {
     final mode = ref.watch(diningModeProvider);
     final targets = ref.watch(nutritionTargetsProvider);
     final consumed = ref.watch(consumedTodayProvider);
+    final cheat = mode == DiningMode.cheat;
 
-    final remaining = targets == null
+    final remainingCalories = targets == null
         ? null
         : targets.calories - consumed.calories;
+    final remainingProtein = targets == null
+        ? null
+        : targets.macros.proteinG - consumed.proteinG;
 
-    return RefreshIndicator(
-      color: AppColors.brand,
-      onRefresh: () => ref.refresh(nearbyRestaurantsProvider.future),
-      child: ListView(
-        padding: EdgeInsets.only(
-          top: AppSpacing.space1,
-          bottom: MainShell.bottomInsetFor(context),
+    final isFixture = nearbyAsync.valueOrNull?.isFallback ?? false;
+
+    return ListView(
+      padding: EdgeInsets.only(
+        top: AppSpacing.space1,
+        bottom: MainShell.bottomInsetFor(context),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
+          child: Row(
+            children: [
+              const ScreenBackButton(),
+              Expanded(
+                child: Text(
+                  'Eat out',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.h6.copyWith(
+                    fontSize: 15,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 36),
+            ],
+          ),
         ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const ScreenBackButton(),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        remaining == null
-                            ? 'Ranked for your profile'
-                            : remaining > 0
-                            ? '$remaining kcal left today'
-                            : '${remaining.abs()} kcal over today',
-                        style: AppTextStyles.cardMeta.copyWith(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text('Eat out', style: AppTextStyles.h3),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
 
+        // BUDGET + MODE
+        _Section(
+          delay: 30,
+          child: _BudgetCard(
+            cheat: cheat,
+            remainingCalories: remainingCalories,
+            remainingProtein: remainingProtein,
+            onToggle: () => ref
+                .read(diningModeProvider.notifier)
+                .select(cheat ? DiningMode.aligned : DiningMode.cheat),
+          ),
+        ),
+
+        // FALLBACK DISCLOSURE
+        if (isFixture)
           _Section(
-            delay: 20,
-            child: SegmentedControl<DiningMode>(
-              options: const [
-                SegmentedOption(
-                  value: DiningMode.aligned,
-                  label: 'Aligned to today',
-                ),
-                SegmentedOption(value: DiningMode.cheat, label: 'Cheat day'),
-              ],
-              selected: mode,
-              onChanged: (next) =>
-                  ref.read(diningModeProvider.notifier).select(next),
+            delay: 60,
+            child: const _Notice(
+              icon: Icons.info_outline,
+              text: fixtureDisclosure,
             ),
           ),
 
-          _Section(delay: 60, child: _ModeExplainer(mode: mode)),
-
-          if (nearbyAsync.isLoading)
-            const _Section(
-              delay: 100,
-              child: Column(
-                spacing: AppSpacing.space3,
-                children: [Skeleton(height: 210), Skeleton(height: 210)],
+        // PICKS
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space5,
+            AppSpacing.space6,
+            AppSpacing.space5,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SectionHeader(
+                title: cheat ? 'Worth the cheat' : 'Fits your day',
+                count: picks.length,
               ),
-            )
-          else ...[
-            if (nearbyAsync.valueOrNull?.isFallback ?? false)
-              _Section(delay: 90, child: const _FallbackNotice()),
-
-            if (picks.isEmpty)
-              const _Section(delay: 120, child: _NoPicks())
-            else ...[
-              _Section(
-                delay: 120,
-                child: SectionHeader(
-                  title: 'Best fit near you',
-                  count: picks.length,
-                ),
-              ),
-              for (var i = 0; i < picks.length; i += 1)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.space5,
-                    0,
-                    AppSpacing.space5,
-                    AppSpacing.space3,
-                  ),
-                  child: FadeIn(
-                    delay: Duration(milliseconds: 140 + i * 40),
-                    child: _PickCard(pick: picks[i], rank: i + 1),
-                  ),
+              if (nearbyAsync.isLoading && picks.isEmpty)
+                const Column(
+                  spacing: AppSpacing.space3,
+                  children: [Skeleton(height: 180), Skeleton(height: 180)],
+                )
+              else if (picks.isEmpty)
+                EmptyState(
+                  icon: Icons.no_meals_outlined,
+                  title: 'Nothing we can recommend here',
+                  body: 'Every nearby venue serves food that conflicts with '
+                      'your allergies or diet. Widening your cuisines in '
+                      'Settings usually fixes this.',
+                  actionLabel: 'Open settings',
+                  onAction: () {
+                    Navigator.of(context).maybePop();
+                    ref.read(mainTabProvider.notifier).select(MainTab.settings);
+                  },
+                )
+              else
+                Column(
+                  children: [
+                    for (var i = 0; i < picks.length; i += 1)
+                      FadeIn(
+                        delay: Duration(milliseconds: 40 * (i > 6 ? 6 : i)),
+                        child: _RestaurantPickCard(pick: picks[i]),
+                      ),
+                  ],
                 ),
             ],
-          ],
-
-          const Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.space8,
-              AppSpacing.space4,
-              AppSpacing.space8,
-              0,
-            ),
-            child: _MenuDisclosure(),
           ),
-        ],
-      ),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space8 + AppSpacing.space2,
+            AppSpacing.space6,
+            AppSpacing.space8 + AppSpacing.space2,
+            0,
+          ),
+          child: Text(
+            'Dish suggestions are typical of each cuisine — we do not have '
+            'these restaurants’ menus. Check with the venue for ingredients if '
+            'you have an allergy.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.cardMeta.copyWith(fontSize: 10, height: 1.5),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -167,7 +178,7 @@ class _Section extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space5,
-        AppSpacing.space5,
+        AppSpacing.space4,
         AppSpacing.space5,
         0,
       ),
@@ -176,45 +187,76 @@ class _Section extends StatelessWidget {
   }
 }
 
-/// Cheat mode is an explicit choice, so it says out loud what it changed.
-class _ModeExplainer extends StatelessWidget {
-  const _ModeExplainer({required this.mode});
+class _BudgetCard extends StatelessWidget {
+  const _BudgetCard({
+    required this.cheat,
+    required this.remainingCalories,
+    required this.remainingProtein,
+    required this.onToggle,
+  });
 
-  final DiningMode mode;
+  final bool cheat;
+  final int? remainingCalories;
+  final double? remainingProtein;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
-    final cheat = mode == DiningMode.cheat;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space3,
-        vertical: AppSpacing.space2,
-      ),
-      decoration: BoxDecoration(
-        color: cheat ? AppColors.limeSoft : AppColors.brand50,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Row(
-        spacing: AppSpacing.space2,
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            cheat ? Icons.celebration_outlined : Icons.track_changes_outlined,
-            size: 15,
-            color: cheat ? AppColors.accent2_800 : AppColors.brand,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cheat ? 'CHEAT DAY' : 'LEFT TODAY',
+                      style: AppTextStyles.tag.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                        color: AppColors.faint,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      remainingCalories != null
+                          ? '$remainingCalories kcal'
+                          : 'No target set',
+                      style: AppTextStyles.h3.copyWith(fontSize: 24),
+                    ),
+                    if (remainingProtein != null && remainingProtein! > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          'and ${remainingProtein!.round()} g of protein to go',
+                          style: AppTextStyles.cardMeta.copyWith(fontSize: 12),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              _ModeToggle(cheat: cheat, onTap: onToggle),
+            ],
           ),
-          Expanded(
+          Container(
+            margin: const EdgeInsets.only(top: AppSpacing.space3),
+            padding: const EdgeInsets.only(top: AppSpacing.space3),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppColors.hairline)),
+            ),
             child: Text(
               cheat
-                  ? 'Ranking for enjoyment, not macros. Your allergies and diet '
-                        'are still hard filters — those are safety, not '
-                        'preference.'
-                  : 'Ranked against what you have left today and what your plan '
-                        'is asking for.',
-              style: AppTextStyles.cardBody.copyWith(
+                  ? 'Cheat mode ranks for what you actually want. Your allergies '
+                        'and diet are still hard filters — those never relax.'
+                  : 'Dishes are ranked against what you have left today, your '
+                        'blood work and your cuisines.',
+              style: AppTextStyles.cardMeta.copyWith(
+                fontSize: 11,
                 height: 1.45,
-                color: cheat ? AppColors.accent2_900 : AppColors.brand800,
               ),
             ),
           ),
@@ -224,28 +266,89 @@ class _ModeExplainer extends StatelessWidget {
   }
 }
 
-class _FallbackNotice extends StatelessWidget {
-  const _FallbackNotice();
+class _ModeToggle extends StatelessWidget {
+  const _ModeToggle({required this.cheat, required this.onTap});
+
+  final bool cheat;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      toggled: cheat,
+      label: 'Cheat day mode',
+      hint: 'Stops down-ranking indulgent dishes. Allergies and diet are still '
+          'respected.',
+      child: PressableScale(
+        scaleTo: 0.97,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space3,
+            vertical: AppSpacing.space2,
+          ),
+          decoration: BoxDecoration(
+            color: cheat ? AppColors.limeSoft : AppColors.surface,
+            border: Border.all(
+              color: cheat ? AppColors.accent2_300 : AppColors.hairline,
+            ),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 6,
+            children: [
+              Icon(
+                cheat ? Icons.cake_outlined : Icons.eco_outlined,
+                size: 15,
+                color: cheat ? AppColors.ink : AppColors.faint,
+              ),
+              Text(
+                cheat ? 'Cheat' : 'On plan',
+                style: AppTextStyles.cardMeta.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: cheat ? AppColors.ink : AppColors.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Notice extends StatelessWidget {
+  const _Notice({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space3,
-        vertical: AppSpacing.space2,
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space3,
       ),
       decoration: BoxDecoration(
-        color: AppColors.neutral200,
+        color: AppColors.ink.withValues(alpha: 0.04),
+        border: Border.all(color: AppColors.hairline),
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Row(
-        spacing: AppSpacing.space2,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacing.space2 + 2,
         children: [
-          const Icon(Icons.info_outline, size: 14, color: AppColors.muted),
+          Icon(icon, size: 15, color: AppColors.faint),
           Expanded(
             child: Text(
-              fixtureDisclosure,
-              style: AppTextStyles.cardBody.copyWith(height: 1.4),
+              text,
+              style: AppTextStyles.cardMeta.copyWith(
+                fontSize: 11,
+                height: 1.45,
+              ),
             ),
           ),
         ],
@@ -254,287 +357,122 @@ class _FallbackNotice extends StatelessWidget {
   }
 }
 
-class _NoPicks extends StatelessWidget {
-  const _NoPicks();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space5),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.no_meals_outlined, size: 22, color: AppColors.faint),
-          const SizedBox(height: AppSpacing.space2),
-          Text(
-            'Nothing nearby matches your diet and allergies right now.',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.cardBody.copyWith(height: 1.45),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One venue, and the specific thing to order there.
-class _PickCard extends ConsumerWidget {
-  const _PickCard({required this.pick, required this.rank});
+/// One venue: what to order, what it costs, and a one-tap way into the log.
+class _RestaurantPickCard extends ConsumerWidget {
+  const _RestaurantPickCard({required this.pick});
 
   final RestaurantPick pick;
-  final int rank;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final restaurant = pick.restaurant;
-    final combo = pick.combo;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(
-          color: rank == 1 ? AppColors.brand300 : AppColors.hairline,
-          width: rank == 1 ? 1.5 : 1,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.space4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            restaurant.name,
-                            style: AppTextStyles.cardTitle.copyWith(
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            [
-                              restaurant.cuisine?.label,
-                              restaurant.distanceLabel,
-                              if (restaurant.rating != null)
-                                '★ ${restaurant.rating!.toStringAsFixed(1)}',
-                              if (restaurant.priceLabel.isNotEmpty)
-                                restaurant.priceLabel,
-                            ].whereType<String>().join(' · '),
-                            style: AppTextStyles.cardMeta,
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (rank == 1)
-                      const AppTag(label: 'Best fit', variant: AppTagVariant.accent),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.space3),
-
-                // The headline: what to order, and the macros that justify it.
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.space3),
-                  decoration: BoxDecoration(
-                    color: AppColors.brand50,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ORDER THIS',
-                        style: AppTextStyles.tag.copyWith(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1,
-                          color: AppColors.brand700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        combo.map((d) => d.name).join(' + '),
-                        style: AppTextStyles.h5.copyWith(height: 1.3),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${pick.comboMacros.calories} kcal · '
-                        '${pick.comboMacros.proteinG.round()} g protein · '
-                        '${pick.comboMacros.fibreG.round()} g fibre',
-                        style: AppTextStyles.cardMeta.copyWith(
-                          color: AppColors.brand700,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.space2),
-                      _LogButton(pick: pick),
-                    ],
-                  ),
-                ),
-
-                if (pick.reasons.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.space3),
-                  for (final reason in pick.reasons)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        spacing: AppSpacing.space2,
-                        children: [
-                          const Icon(
-                            Icons.check,
-                            size: 12,
-                            color: AppColors.brand400,
-                          ),
-                          Expanded(
-                            child: Text(
-                              reason,
-                              style: AppTextStyles.cardBody.copyWith(
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
-
-          // The runners-up, so the card is a menu rather than a single verdict.
-          if (pick.dishes.length > 1)
-            Container(
-              width: double.infinity,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.space3),
+      child: SurfaceCard(
+        padded: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // VENUE
+            Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.space4,
-                AppSpacing.space3,
+                AppSpacing.space4,
                 AppSpacing.space4,
                 AppSpacing.space3,
-              ),
-              decoration: const BoxDecoration(
-                color: AppColors.canvas,
-                border: Border(top: BorderSide(color: AppColors.hairline)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'ALSO GOOD HERE',
-                    style: AppTextStyles.tag.copyWith(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1,
-                      color: AppColors.faint,
+                    restaurant.name,
+                    style: AppTextStyles.h5.copyWith(
+                      fontSize: 16,
+                      height: 1.25,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.space2),
-                  for (final dish in pick.dishes.skip(1))
+                  const SizedBox(height: 4),
+                  _VenueMeta(restaurant: restaurant),
+                  if (pick.reasons.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  dish.name,
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Text(
-                                  dish.rationale,
-                                  style: AppTextStyles.cardMeta.copyWith(
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            '${dish.macros.calories} kcal',
-                            style: AppTextStyles.cardMeta,
-                          ),
-                        ],
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        pick.reasons.join(' · '),
+                        style: AppTextStyles.cardMeta.copyWith(
+                          fontSize: 11,
+                          height: 1.45,
+                        ),
                       ),
                     ),
                 ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
 
-/// Logs the recommended combo straight into the food log.
-///
-/// This is the whole argument for dish-level recommendation: the macros shown on
-/// the card are the same rows from the same table that get written to the log, so
-/// "I ate this" needs no re-entry and no reconciliation.
-class _LogButton extends ConsumerWidget {
-  const _LogButton({required this.pick});
-
-  final RestaurantPick pick;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return PressableScale(
-      scaleTo: 0.98,
-      semanticLabel: 'Log this order to your food log',
-      onTap: () => _log(context, ref),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space3,
-          vertical: 7,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.brand,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 6,
-          children: [
-            const Icon(Icons.add, size: 13, color: AppColors.onBrand),
-            Text(
-              'I ate this',
-              style: AppTextStyles.button.copyWith(
-                fontSize: 12,
-                color: AppColors.onBrand,
+            // DISHES
+            Container(
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.hairline)),
+              ),
+              child: Column(
+                children: [
+                  for (var i = 0; i < pick.dishes.length; i += 1)
+                    _DishRow(
+                      dish: pick.dishes[i],
+                      isTopPick: i == 0,
+                      isLast: i == pick.dishes.length - 1,
+                      onLog: () => _logDish(context, ref, pick.dishes[i]),
+                    ),
+                ],
               ),
             ),
+
+            // COMBO
+            if (pick.comboMacros.calories > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space4,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.brand50.withValues(alpha: 0.6),
+                  border: const Border(
+                    top: BorderSide(color: AppColors.hairline),
+                  ),
+                ),
+                child: Text(
+                  'Ordering the top '
+                  '${pick.dishes.length > 1 ? 'two' : 'pick'}: '
+                  '${pick.comboMacros.calories} kcal, '
+                  '${pick.comboMacros.proteinG.round()} g protein, '
+                  '${pick.comboMacros.fibreG.round()} g fibre.',
+                  style: AppTextStyles.cardMeta.copyWith(
+                    fontSize: 11,
+                    height: 1.4,
+                    color: AppColors.brand800,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _log(BuildContext context, WidgetRef ref) async {
+  /// Logs a single dish. The macros written are the same rows from the same food
+  /// table the card displayed — which is the whole argument for recommending
+  /// dishes rather than venues.
+  Future<void> _logDish(
+    BuildContext context,
+    WidgetRef ref,
+    DishPick dish,
+  ) async {
+    final food = findFood(dish.foodId);
+    if (food == null) return;
+
+    await HapticFeedback.mediumImpact();
+
     final now = DateTime.now();
-    final foods = pick.combo
-        .map((dish) => findFood(dish.foodId))
-        .whereType<FoodDefinition>()
-        .map(LoggedFood.fromDefinition)
-        .toList();
-
-    if (foods.isEmpty) return;
-
     await ref.read(mealLogProvider.notifier).add(
       MealEntry(
         id: 'dining-${now.microsecondsSinceEpoch}',
@@ -542,32 +480,187 @@ class _LogButton extends ConsumerWidget {
         loggedAt: now,
         slot: MealSlot.forHour(now.hour),
         source: MealSource.restaurant,
-        foods: foods,
-        note: pick.restaurant.name,
+        foods: [LoggedFood.fromDefinition(food)],
+        note: 'At ${pick.restaurant.name}',
       ),
     );
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'Logged ${pick.comboMacros.calories} kcal from '
-          '${pick.restaurant.name}',
-        ),
+        content: Text('Logged ${dish.name} · ${dish.macros.calories} kcal'),
       ),
     );
   }
 }
 
-class _MenuDisclosure extends StatelessWidget {
-  const _MenuDisclosure();
+class _VenueMeta extends StatelessWidget {
+  const _VenueMeta({required this.restaurant});
+
+  final Restaurant restaurant;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      dishBasis,
-      textAlign: TextAlign.center,
-      style: AppTextStyles.cardMeta.copyWith(fontSize: 10, height: 1.5),
+    final parts = <Widget>[
+      if (restaurant.rating != null)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 3,
+          children: [
+            const Icon(Icons.star, size: 11, color: AppColors.borderline),
+            Text(
+              restaurant.rating!.toStringAsFixed(1),
+              style: AppTextStyles.cardMeta.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      if (restaurant.distanceLabel != null)
+        Text(
+          restaurant.distanceLabel!,
+          style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
+        ),
+      if (restaurant.priceLabel.isNotEmpty)
+        Text(
+          restaurant.priceLabel,
+          style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
+        ),
+      // Never let a curated archetype read as a real nearby venue.
+      if (restaurant.source == RestaurantSource.fixture)
+        Text(
+          'example venue',
+          style: AppTextStyles.cardMeta.copyWith(
+            fontSize: 11,
+            color: AppColors.borderline,
+          ),
+        ),
+    ];
+
+    return Wrap(
+      spacing: AppSpacing.space2,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (var i = 0; i < parts.length; i += 1) ...[
+          if (i > 0)
+            Container(
+              width: 3,
+              height: 3,
+              decoration: const BoxDecoration(
+                color: AppColors.faint,
+                shape: BoxShape.circle,
+              ),
+            ),
+          parts[i],
+        ],
+      ],
+    );
+  }
+}
+
+class _DishRow extends StatelessWidget {
+  const _DishRow({
+    required this.dish,
+    required this.isTopPick,
+    required this.isLast,
+    required this.onLog,
+  });
+
+  final DishPick dish;
+  final bool isTopPick;
+  final bool isLast;
+  final VoidCallback onLog;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: AppColors.hairline)),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space3,
+      ),
+      child: Row(
+        spacing: AppSpacing.space3,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  spacing: AppSpacing.space2,
+                  children: [
+                    if (isTopPick)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.brand600,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        child: Text(
+                          'TOP PICK',
+                          style: AppTextStyles.tag.copyWith(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            color: AppColors.onBrand,
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: Text(
+                        dish.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${dish.portionLabel} · ${dish.macros.calories} kcal · '
+                  '${dish.macros.proteinG.round()} g protein',
+                  style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dish.rationale,
+                  style: AppTextStyles.cardMeta.copyWith(
+                    fontSize: 11,
+                    height: 1.36,
+                    color: AppColors.faint,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PressableScale(
+            scaleTo: 0.94,
+            semanticLabel: 'Log ${dish.name}',
+            semanticHint: "Adds this dish to today's food log",
+            onTap: onLog,
+            child: Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.brand50,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add, size: 17, color: AppColors.brand),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

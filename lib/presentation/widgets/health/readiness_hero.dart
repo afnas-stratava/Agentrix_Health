@@ -107,7 +107,7 @@ class ReadinessHero extends StatelessWidget {
                             (copy?.label ?? 'No baseline').toUpperCase(),
                             style: AppTextStyles.tag.copyWith(
                               fontSize: 9,
-                              letterSpacing: 0.9,
+                              letterSpacing: 0.5,
                               color: readiness == null
                                   ? AppColors.onBrand.withValues(alpha: 0.75)
                                   : bandColor,

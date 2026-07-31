@@ -34,11 +34,7 @@ class SectionHeader extends StatelessWidget {
                 Flexible(
                   child: Text(
                     title.toUpperCase(),
-                    style: AppTextStyles.tag.copyWith(
-                      fontSize: 11,
-                      letterSpacing: 1,
-                      color: AppColors.muted,
-                    ),
+                    style: AppTextStyles.microLabel,
                   ),
                 ),
                 if (count != null && count! > 0)

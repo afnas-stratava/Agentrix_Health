@@ -7,12 +7,11 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/status_bar_style.dart';
 import '../../providers/main_tab_provider.dart';
-import '../../widgets/canvas_wash.dart';
 import 'food_log_screen.dart';
 import 'home_screen.dart';
 import 'insights_screen.dart';
 import 'labs_screen.dart';
-import 'log_meal_sheet.dart';
+import 'log_meal_screen.dart';
 import 'profile_screen.dart';
 
 /// Mirrors `app/(tabs)/_layout.tsx` + `PillTabBar`.
@@ -54,7 +53,10 @@ class MainShell extends ConsumerWidget {
 
     return StatusBarStyle(
       light: false,
-      child: CanvasWash(
+      // Plain canvas: only Today carries the gradient wash, and it applies it
+      // itself.
+      child: ColoredBox(
+        color: AppColors.canvas,
         child: Stack(
           children: [
             SafeArea(
@@ -63,16 +65,12 @@ class MainShell extends ConsumerWidget {
               // selects by index, so a mismatch silently shows the wrong screen.
               child: IndexedStack(
                 index: activeTab.index,
-                children: [
-                  const HomeScreen(),
-                  const FoodLogScreen(),
-                  const InsightsScreen(),
-                  const LabsScreen(),
-                  // Still expects the shell to inset it.
-                  _LegacyTabFrame(
-                    title: MainTab.settings.title,
-                    child: const ProfileScreen(),
-                  ),
+                children: const [
+                  HomeScreen(),
+                  FoodLogScreen(),
+                  InsightsScreen(),
+                  LabsScreen(),
+                  ProfileScreen(),
                 ],
               ),
             ),
@@ -100,46 +98,9 @@ class _PushedRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatusBarStyle(
       light: false,
-      child: CanvasWash(child: SafeArea(bottom: false, child: child)),
-    );
-  }
-}
-
-/// Keeps the not-yet-ported tabs readable: the padding the old shell applied,
-/// plus their title as an in-content heading now that the chrome header is gone.
-class _LegacyTabFrame extends StatelessWidget {
-  const _LegacyTabFrame({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space6,
-        AppSpacing.space4,
-        AppSpacing.space6,
-        0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: AppTextStyles.h3.copyWith(fontSize: 26)),
-          const SizedBox(height: AppSpacing.space4),
-          Expanded(
-            child: MediaQuery.removePadding(
-              context: context,
-              removeBottom: true,
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  bottom: MainShell.contentBottomInset - AppSpacing.space6,
-                ),
-                child: child,
-              ),
-            ),
-          ),
-        ],
+      child: ColoredBox(
+        color: AppColors.canvas,
+        child: SafeArea(bottom: false, child: child),
       ),
     );
   }
@@ -239,7 +200,7 @@ class _CentreAction extends ConsumerWidget {
               HapticFeedback.mediumImpact();
               // Opens the logging sheet directly rather than routing to the Food
               // tab — the several-times-a-day action should cost one tap, not two.
-              showLogMealSheet(context);
+              MainShell.push(context, const LogMealScreen());
             },
             child: Container(
               width: 56,

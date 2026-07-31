@@ -5,73 +5,283 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/fade_in.dart';
-import '../../../core/widgets/pressable_scale.dart';
 import '../../../core/widgets/screen_back_button.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../domain/entities/brief/daily_brief.dart';
 import '../../providers/brief_providers.dart';
 import '../../providers/health_providers.dart';
 import '../../providers/main_tab_provider.dart';
-import '../../providers/user_profile_provider.dart';
+import '../../providers/nutrition_providers.dart';
+import 'dining_screen.dart';
 import 'main_shell.dart';
 
-/// Today's plan.
+/// The morning brief. Mirrors `app/brief.tsx`.
 ///
-/// There is no "regenerate" button, and its absence is the point: the brief is a
-/// pure function of the day's blood work, telemetry, cycle phase and food log, so
-/// the same inputs always compose the same plan. A button that reshuffled the
-/// wording would be admitting the wording was arbitrary. What the user can do
-/// instead is refresh the *inputs* — pull to refresh — and watch the plan follow.
+/// One screen answering "what should I do today", composed from blood work, last
+/// night's recovery, cycle phase and the week's eating. The driver list at the
+/// bottom is not decoration — it is what makes the plan auditable, and it is the
+/// reason this can be shown to someone without over-claiming.
 class MorningBriefScreen extends ConsumerWidget {
   const MorningBriefScreen({super.key});
+
+  static const _targetIcon = {
+    BriefTargetId.calories: Icons.local_fire_department_outlined,
+    BriefTargetId.protein: Icons.restaurant_outlined,
+    BriefTargetId.water: Icons.water_drop_outlined,
+    BriefTargetId.steps: Icons.directions_walk,
+    BriefTargetId.sleep: Icons.bedtime_outlined,
+  };
+
+  static const _driverIcon = {
+    BriefDriverKind.recovery: Icons.monitor_heart_outlined,
+    BriefDriverKind.sleep: Icons.bedtime_outlined,
+    BriefDriverKind.cycle: Icons.water_drop_outlined,
+    BriefDriverKind.labs: Icons.info_outline,
+    BriefDriverKind.nutrition: Icons.restaurant_outlined,
+  };
+
+  static const _intensityTone = {
+    WorkoutIntensity.rest: AppColors.critical,
+    WorkoutIntensity.easy: AppColors.borderline,
+    WorkoutIntensity.moderate: AppColors.normal,
+    WorkoutIntensity.hard: AppColors.optimal,
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brief = ref.watch(dailyBriefProvider);
-    final profile = ref.watch(userProfileProvider);
+    final needsProfile = ref.watch(nutritionTargetsProvider) == null;
+    final loading = ref.watch(healthSeriesProvider).isLoading;
 
-    return RefreshIndicator(
-      color: AppColors.brand,
-      onRefresh: () => ref.refresh(healthSeriesProvider.future),
-      child: ListView(
-        padding: EdgeInsets.only(
-          top: AppSpacing.space1,
-          bottom: MainShell.bottomInsetFor(context),
-        ),
+    if (needsProfile) {
+      return Column(
         children: [
-          _Header(name: profile.greetingName),
-          if (brief == null)
-            const Padding(
-              padding: EdgeInsets.all(AppSpacing.space5),
-              child: Column(
-                spacing: AppSpacing.space3,
-                children: [
-                  Skeleton(height: 150),
-                  Skeleton(height: 90),
-                  Skeleton(height: 120),
-                ],
+          const _BriefHeader(),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.space5),
+                child: EmptyState(
+                  icon: Icons.restaurant_outlined,
+                  title: 'We need a few numbers first',
+                  body: 'Your brief prescribes calories, protein and hydration '
+                      '— which needs your height, weight and age before it can '
+                      'say anything specific.',
+                  actionLabel: 'Complete your profile',
+                  onAction: () {
+                    Navigator.of(context).maybePop();
+                    ref.read(mainTabProvider.notifier).select(MainTab.settings);
+                  },
+                ),
               ),
-            )
-          else ...[
-            _Section(delay: 20, child: _NarrativeCard(brief: brief)),
-            _Section(delay: 60, child: _TargetsCard(brief: brief)),
-            _Section(delay: 100, child: _WorkoutCard(brief: brief)),
-            _Section(delay: 140, child: _FoodFocusCard(brief: brief)),
-            _Section(delay: 180, child: _DriversCard(brief: brief)),
-            if (brief.caveats.isNotEmpty)
-              _Section(delay: 220, child: _CaveatsCard(brief: brief)),
-          ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView(
+      padding: EdgeInsets.only(
+        top: AppSpacing.space1,
+        bottom: MainShell.bottomInsetFor(context),
+      ),
+      children: [
+        const _BriefHeader(),
+
+        if (loading && brief == null)
           const Padding(
             padding: EdgeInsets.fromLTRB(
-              AppSpacing.space8,
-              AppSpacing.space6,
-              AppSpacing.space8,
+              AppSpacing.space5,
+              AppSpacing.space5,
+              AppSpacing.space5,
               0,
             ),
-            child: _Disclaimer(),
+            child: Column(
+              spacing: AppSpacing.space3,
+              children: [Skeleton(height: 220), Skeleton(height: 120)],
+            ),
+          )
+        else if (brief == null)
+          const Padding(
+            padding: EdgeInsets.all(AppSpacing.space5),
+            child: EmptyState(
+              icon: Icons.info_outline,
+              title: 'Nothing to brief yet',
+              body: 'Connect Apple Health or add a blood report and your first '
+                  'brief appears the next morning.',
+            ),
+          )
+        else ...[
+          // HERO
+          _Section(delay: 30, child: _Hero(brief: brief)),
+
+          // TARGETS
+          _Section(
+            delay: 90,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionHeader(title: "Today's targets"),
+                SurfaceCard(
+                  padded: false,
+                  child: Column(
+                    children: [
+                      for (final target in brief.targets)
+                        _TargetRow(
+                          icon: _targetIcon[target.id]!,
+                          target: target,
+                          isLast: target == brief.targets.last,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+
+          // TRAINING
+          _Section(
+            delay: 150,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionHeader(title: 'Training'),
+                SurfaceCard(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: AppSpacing.space3,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: _intensityTone[brief.workout.intensity]!
+                              .withValues(alpha: 0.09),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Icon(
+                          Icons.fitness_center,
+                          size: 18,
+                          color: _intensityTone[brief.workout.intensity],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              brief.workout.title,
+                              style: AppTextStyles.cardTitle.copyWith(
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              brief.workout.detail,
+                              style: AppTextStyles.cardBody.copyWith(
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // FOOD FOCUS
+          _Section(
+            delay: 210,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionHeader(title: 'Eat for this today'),
+                SurfaceCard(child: _FoodFocusCard(focus: brief.foodFocus)),
+              ],
+            ),
+          ),
+
+          // DRIVERS — every one of them, not a collapsed summary. A plan you
+          // cannot audit is a plan you have to take on faith.
+          _Section(
+            delay: 270,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionHeader(
+                  title: 'What shaped this',
+                  count: brief.drivers.length,
+                ),
+                SurfaceCard(
+                  padded: false,
+                  child: Column(
+                    children: [
+                      for (final driver in brief.drivers)
+                        _DriverRow(
+                          icon: _driverIcon[driver.kind]!,
+                          driver: driver,
+                          isLast: driver == brief.drivers.last,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // CAVEATS
+          if (brief.caveats.isNotEmpty)
+            _Section(delay: 330, child: _Caveats(caveats: brief.caveats)),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space8 + AppSpacing.space2,
+              AppSpacing.space6,
+              AppSpacing.space8 + AppSpacing.space2,
+              0,
+            ),
+            child: Text(
+              'Composed from your own data on this device. Not medical advice, '
+              'and not a diagnosis.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.cardMeta.copyWith(fontSize: 10, height: 1.5),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Back button, centred title, and a spacer the same width as the button so the
+/// title sits optically centred rather than centred in what is left over.
+class _BriefHeader extends StatelessWidget {
+  const _BriefHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
+      child: Row(
+        children: [
+          const ScreenBackButton(),
+          Expanded(
+            child: Text(
+              'Your morning brief',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h6.copyWith(fontSize: 15, letterSpacing: 0),
+            ),
+          ),
+          const SizedBox(width: 36),
         ],
       ),
     );
@@ -98,182 +308,105 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.name});
-
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? 'Good morning'
-        : (hour < 18 ? 'Good afternoon' : 'Good evening');
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const ScreenBackButton(),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  DateFormat('EEEE, MMMM d').format(DateTime.now()),
-                  style: AppTextStyles.cardMeta.copyWith(
-                    fontSize: 11,
-                    color: AppColors.muted,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text('$greeting, $name', style: AppTextStyles.h3),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The dark hero. Everything below it is detail; this is the read-one-thing card.
-class _NarrativeCard extends StatelessWidget {
-  const _NarrativeCard({required this.brief});
+class _Hero extends StatelessWidget {
+  const _Hero({required this.brief});
 
   final DailyBrief brief;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.space5),
       decoration: BoxDecoration(
-        color: AppColors.brand900,
         borderRadius: BorderRadius.circular(AppRadius.card),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppColors.heroGradient,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.brand900.withValues(alpha: 0.18),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
+      padding: const EdgeInsets.all(AppSpacing.space5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            spacing: AppSpacing.space2,
-            children: [
-              const Icon(
-                Icons.auto_awesome,
-                size: 14,
-                color: AppColors.accent2_400,
-              ),
-              Text(
-                'YOUR PLAN FOR TODAY',
-                style: AppTextStyles.tag.copyWith(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                  color: AppColors.accent2_400,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space3),
           Text(
-            brief.headline,
-            style: AppTextStyles.h4.copyWith(
-              color: AppColors.onBrand,
-              height: 1.25,
+            DateFormat('EEEE, d MMMM').format(brief.generatedAt).toUpperCase(),
+            style: AppTextStyles.tag.copyWith(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+              color: AppColors.onBrand.withValues(alpha: 0.6),
             ),
           ),
-          const SizedBox(height: AppSpacing.space3),
+          const SizedBox(height: AppSpacing.space2),
+          Text(
+            brief.headline,
+            style: AppTextStyles.h3.copyWith(
+              fontSize: 24,
+              height: 1.2,
+              color: AppColors.onBrand,
+            ),
+          ),
           for (final sentence in brief.narrative)
             Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.space2),
+              padding: const EdgeInsets.only(top: 10),
               child: Text(
                 sentence,
                 style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.onBrandMuted,
-                  height: 1.5,
+                  fontSize: 13,
+                  height: 1.46,
+                  color: AppColors.onBrand.withValues(alpha: 0.8),
                 ),
               ),
             ),
         ],
       ),
-    );
-  }
-}
-
-/// Five numbers, each with the reason it is that number. The basis line is not
-/// decoration — a target nobody can justify is a target nobody follows.
-class _TargetsCard extends ConsumerWidget {
-  const _TargetsCard({required this.brief});
-
-  final DailyBrief brief;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final progress = ref.watch(targetProgressProvider);
-
-    double? fractionFor(BriefTargetId id) => switch (id) {
-      BriefTargetId.calories => progress?.calories,
-      BriefTargetId.protein => progress?.protein,
-      BriefTargetId.water => progress?.water,
-      BriefTargetId.steps => progress?.steps,
-      BriefTargetId.sleep => null,
-    };
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionHeader(title: "Today's targets"),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.hairline),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (final target in brief.targets)
-                _TargetRow(
-                  target: target,
-                  fraction: fractionFor(target.id),
-                  isLast: target == brief.targets.last,
-                ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
 
 class _TargetRow extends StatelessWidget {
   const _TargetRow({
+    required this.icon,
     required this.target,
-    required this.fraction,
     required this.isLast,
   });
 
+  final IconData icon;
   final BriefTarget target;
-  final double? fraction;
   final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space4,
-        vertical: AppSpacing.space3,
-      ),
       decoration: BoxDecoration(
         border: isLast
             ? null
-            : const Border(
-                bottom: BorderSide(color: AppColors.hairline, width: 1),
-              ),
+            : const Border(bottom: BorderSide(color: AppColors.hairline)),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: 14,
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacing.space3,
         children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.brand50,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: Icon(icon, size: 16, color: AppColors.brand),
+          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,37 +416,21 @@ class _TargetRow extends StatelessWidget {
                   style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
                 ),
                 const SizedBox(height: 2),
-                Text(target.basis, style: AppTextStyles.cardMeta),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.space3),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                target.value,
-                style: AppTextStyles.metricSmall.copyWith(fontSize: 17),
-              ),
-              if (fraction != null) ...[
-                const SizedBox(height: 5),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: SizedBox(
-                    width: 56,
-                    height: 5,
-                    child: ColoredBox(
-                      color: AppColors.ink.withValues(alpha: 0.08),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: fraction!,
-                        child: const ColoredBox(color: AppColors.brand),
-                      ),
-                    ),
+                // The basis line is the whole point: a target nobody can
+                // justify is a target nobody follows.
+                Text(
+                  target.basis,
+                  style: AppTextStyles.cardMeta.copyWith(
+                    fontSize: 11,
+                    height: 1.36,
                   ),
                 ),
               ],
-            ],
+            ),
+          ),
+          Text(
+            target.value,
+            style: AppTextStyles.metricSmall.copyWith(fontSize: 17),
           ),
         ],
       ),
@@ -321,349 +438,193 @@ class _TargetRow extends StatelessWidget {
   }
 }
 
-class _WorkoutCard extends StatelessWidget {
-  const _WorkoutCard({required this.brief});
+class _FoodFocusCard extends StatelessWidget {
+  const _FoodFocusCard({required this.focus});
 
-  final DailyBrief brief;
-
-  static const _icons = {
-    WorkoutIntensity.rest: Icons.self_improvement,
-    WorkoutIntensity.easy: Icons.directions_walk,
-    WorkoutIntensity.moderate: Icons.fitness_center,
-    WorkoutIntensity.hard: Icons.bolt,
-  };
+  final FoodFocus focus;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionHeader(title: 'Training'),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space4),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.hairline),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-          ),
-          child: Row(
-            spacing: AppSpacing.space3,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.brand50,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Icon(
-                  _icons[brief.workout.intensity],
-                  size: 18,
-                  color: AppColors.brand,
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      brief.workout.title,
-                      style: AppTextStyles.cardTitle.copyWith(fontSize: 15),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      brief.workout.detail,
-                      style: AppTextStyles.cardBody.copyWith(height: 1.45),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        Text(
+          focus.title,
+          style: AppTextStyles.cardTitle.copyWith(fontSize: 15),
         ),
-      ],
-    );
-  }
-}
+        const SizedBox(height: 6),
+        Text(focus.detail, style: AppTextStyles.cardBody.copyWith(height: 1.5)),
 
-/// Named dishes, filtered by the user's own diet and allergies, ordered by their
-/// own cuisine preferences. Tapping one logs it — the macros behind the
-/// recommendation are the macros that get written to the log.
-class _FoodFocusCard extends ConsumerWidget {
-  const _FoodFocusCard({required this.brief});
-
-  final DailyBrief brief;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final focus = brief.foodFocus;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: 'Eat for this',
-          actionLabel: 'Log a meal',
-          onAction: () =>
-              ref.read(mainTabProvider.notifier).select(MainTab.food),
-        ),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space4),
-          decoration: BoxDecoration(
-            color: AppColors.brand50,
-            border: Border.all(color: AppColors.brand200),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                focus.title,
-                style: AppTextStyles.cardTitle.copyWith(fontSize: 15),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                focus.detail,
-                style: AppTextStyles.cardBody.copyWith(
-                  height: 1.5,
-                  color: AppColors.brand800,
+        if (focus.examples.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 14),
+            padding: const EdgeInsets.only(top: 14),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppColors.hairline)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'GOOD OPTIONS FOR YOU',
+                  style: AppTextStyles.tag.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1,
+                    color: AppColors.faint,
+                  ),
                 ),
-              ),
-              if (focus.examples.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space3),
-                Wrap(
-                  spacing: AppSpacing.space2,
-                  runSpacing: AppSpacing.space2,
-                  children: [
-                    for (final example in focus.examples)
-                      _FoodChip(example: example),
-                  ],
-                ),
+                const SizedBox(height: AppSpacing.space2),
+                for (final example in focus.examples)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      spacing: AppSpacing.space2,
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 4,
+                          decoration: const BoxDecoration(
+                            color: AppColors.brand400,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Text(
+                          example.name,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            example.portionLabel,
+                            style: AppTextStyles.cardMeta.copyWith(
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
-            ],
+            ),
           ),
+
+        const SizedBox(height: AppSpacing.space3),
+        AppButton(
+          label: 'Find somewhere nearby',
+          variant: AppButtonVariant.secondary,
+          size: AppButtonSize.sm,
+          block: true,
+          onPressed: () => MainShell.push(context, const DiningScreen()),
         ),
       ],
     );
   }
 }
 
-class _FoodChip extends StatelessWidget {
-  const _FoodChip({required this.example});
+class _DriverRow extends StatelessWidget {
+  const _DriverRow({
+    required this.icon,
+    required this.driver,
+    required this.isLast,
+  });
 
-  final FoodFocusExample example;
+  final IconData icon;
+  final BriefDriver driver;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space3,
-        vertical: 7,
-      ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.brand200),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: AppColors.hairline)),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: 14,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacing.space3,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 15, color: AppColors.faint),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  driver.label,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.38,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  driver.detail,
+                  style: AppTextStyles.cardMeta.copyWith(
+                    fontSize: 11,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Caveats extends StatelessWidget {
+  const _Caveats({required this.caveats});
+
+  final List<String> caveats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.space4),
+      decoration: BoxDecoration(
+        color: AppColors.ink.withValues(alpha: 0.04),
+        border: Border.all(color: AppColors.hairline),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            example.name,
-            style: AppTextStyles.bodySmall.copyWith(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+            'WHAT THIS BRIEF COULD NOT SEE',
+            style: AppTextStyles.tag.copyWith(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: AppColors.faint,
             ),
           ),
-          Text(
-            example.portionLabel,
-            style: AppTextStyles.cardMeta.copyWith(fontSize: 10),
-          ),
+          for (final caveat in caveats)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '• $caveat',
+                style: AppTextStyles.cardMeta.copyWith(
+                  fontSize: 11,
+                  height: 1.45,
+                ),
+              ),
+            ),
         ],
       ),
-    );
-  }
-}
-
-/// Why the plan says what it says. This is the card that makes the brief
-/// auditable rather than oracular.
-class _DriversCard extends StatefulWidget {
-  const _DriversCard({required this.brief});
-
-  final DailyBrief brief;
-
-  @override
-  State<_DriversCard> createState() => _DriversCardState();
-}
-
-class _DriversCardState extends State<_DriversCard> {
-  bool _expanded = false;
-
-  static const _icons = {
-    BriefDriverKind.recovery: Icons.favorite_outline,
-    BriefDriverKind.sleep: Icons.bedtime_outlined,
-    BriefDriverKind.cycle: Icons.calendar_month_outlined,
-    BriefDriverKind.labs: Icons.science_outlined,
-    BriefDriverKind.nutrition: Icons.restaurant_outlined,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final drivers = widget.brief.drivers;
-    if (drivers.isEmpty) return const SizedBox.shrink();
-
-    final visible = _expanded ? drivers : drivers.take(2).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: 'What shaped this',
-          count: drivers.length,
-          actionLabel: _expanded ? 'Show less' : 'Show all',
-          onAction: () => setState(() => _expanded = !_expanded),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.hairline),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (final driver in visible)
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.space4),
-                  decoration: BoxDecoration(
-                    border: driver == visible.last
-                        ? null
-                        : const Border(
-                            bottom: BorderSide(
-                              color: AppColors.hairline,
-                              width: 1,
-                            ),
-                          ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: AppSpacing.space3,
-                    children: [
-                      Icon(
-                        _icons[driver.kind],
-                        size: 15,
-                        color: AppColors.brand,
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              driver.label,
-                              style: AppTextStyles.bodySmall.copyWith(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              driver.detail,
-                              style: AppTextStyles.cardBody.copyWith(
-                                height: 1.45,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// What the brief could not see. Shown, not buried: a plan that overstates its
-/// own evidence is worse than one that admits a gap.
-class _CaveatsCard extends ConsumerWidget {
-  const _CaveatsCard({required this.brief});
-
-  final DailyBrief brief;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return PressableScale(
-      scaleTo: 0.995,
-      onTap: () => ref.read(mainTabProvider.notifier).select(MainTab.settings),
-      semanticLabel: 'What this plan could not see',
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.space4),
-        decoration: BoxDecoration(
-          color: AppColors.neutral200,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'WHAT THIS COULD NOT SEE',
-              style: AppTextStyles.tag.copyWith(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-                color: AppColors.muted,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space2),
-            for (final caveat in brief.caveats)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 5),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: AppSpacing.space2,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: Container(
-                        width: 3,
-                        height: 3,
-                        decoration: const BoxDecoration(
-                          color: AppColors.faint,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        caveat,
-                        style: AppTextStyles.cardBody.copyWith(height: 1.45),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Disclaimer extends StatelessWidget {
-  const _Disclaimer();
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      'Composed from your own data and published reference intervals — not '
-      'medical advice, and not a diagnosis.',
-      textAlign: TextAlign.center,
-      style: AppTextStyles.cardMeta.copyWith(fontSize: 10, height: 1.5),
     );
   }
 }

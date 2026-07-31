@@ -1,7 +1,43 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Top-level app flow: the four onboarding steps, then the main tabbed app.
-enum AppStage { welcome, form, bloodTest, healthConnect, main }
+/// Top-level app flow. Mirrors `app/onboarding/_layout.tsx` plus the tab shell.
+///
+/// Forward-only: each step's Continue is the only way on, and Back is an
+/// explicit control rather than a gesture, so a half-configured profile cannot
+/// be left behind by a swipe.
+///
+/// Note there is no blood-test step. RN collects blood work from the Labs tab
+/// after onboarding, because a first-run flow that asks for a PDF is a first-run
+/// flow most people abandon.
+enum AppStage {
+  welcome,
+  sex,
+  body,
+  goals,
+  diet,
+  permissions,
+  main;
+
+  /// The step after this one. `main` is terminal.
+  AppStage get next => switch (this) {
+    AppStage.welcome => AppStage.sex,
+    AppStage.sex => AppStage.body,
+    AppStage.body => AppStage.goals,
+    AppStage.goals => AppStage.diet,
+    AppStage.diet => AppStage.permissions,
+    AppStage.permissions || AppStage.main => AppStage.main,
+  };
+
+  /// The step before this one. `welcome` is the first.
+  AppStage get previous => switch (this) {
+    AppStage.welcome || AppStage.sex => AppStage.welcome,
+    AppStage.body => AppStage.sex,
+    AppStage.goals => AppStage.body,
+    AppStage.diet => AppStage.goals,
+    AppStage.permissions => AppStage.diet,
+    AppStage.main => AppStage.permissions,
+  };
+}
 
 class AppStageNotifier extends Notifier<AppStage> {
   /// Starts at [AppStage.welcome].
@@ -15,10 +51,11 @@ class AppStageNotifier extends Notifier<AppStage> {
 
   static const bool _skipOnboarding = bool.fromEnvironment('SKIP_ONBOARDING');
 
+  void go(AppStage stage) => state = stage;
+  void next() => state = state.next;
+  void back() => state = state.previous;
+
   void goWelcome() => state = AppStage.welcome;
-  void goForm() => state = AppStage.form;
-  void goBloodTest() => state = AppStage.bloodTest;
-  void goHealthConnect() => state = AppStage.healthConnect;
   void goMain() => state = AppStage.main;
 }
 

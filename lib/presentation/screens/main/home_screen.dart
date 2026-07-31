@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
@@ -11,20 +12,22 @@ import '../../../core/widgets/pressable_scale.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../domain/entities/health/metric_key.dart';
-import '../../../domain/entities/insights/correlation.dart';
-import '../../../domain/entities/insights/insight.dart';
-import '../../../domain/entities/labs/lab_report.dart';
 import '../../providers/brief_providers.dart';
 import '../../providers/health_providers.dart';
 import '../../providers/insights_providers.dart';
 import '../../providers/labs_providers.dart';
 import '../../providers/main_tab_provider.dart';
 import '../../providers/nutrition_providers.dart';
+import '../../../core/widgets/surface_card.dart';
+import '../../widgets/canvas_wash.dart';
 import '../../widgets/health/readiness_hero.dart';
+import '../../widgets/insights/action_row.dart';
+import '../../widgets/insights/headline_insight.dart';
+import '../../widgets/labs/lab_status_card.dart';
 import '../../widgets/health/stat_tile.dart';
 import 'dining_screen.dart';
 import 'lab_report_screen.dart';
-import 'log_meal_sheet.dart';
+import 'log_meal_screen.dart';
 import 'main_shell.dart';
 import 'metric_detail_screen.dart';
 import 'morning_brief_screen.dart';
@@ -93,257 +96,277 @@ class HomeScreen extends ConsumerWidget {
       }
     }
 
-    return RefreshIndicator(
-      color: AppColors.brand,
-      onRefresh: () => ref.refresh(healthSeriesProvider.future),
-      child: ListView(
-        padding: EdgeInsets.only(
-          top: AppSpacing.space1,
-          bottom: MainShell.bottomInsetFor(context),
-        ),
-        children: [
-          // HEADER
-          _Header(
-            date: DateFormat('EEEE, d MMMM').format(DateTime.now()),
-            synced: synced,
-            greeting: _greeting(),
-            refreshing: loading,
-            onRefresh: () => ref.invalidate(healthSeriesProvider),
-            onSettings: () =>
-                ref.read(mainTabProvider.notifier).select(MainTab.settings),
+    return CanvasWash(
+      child: RefreshIndicator(
+        color: AppColors.brand,
+        onRefresh: () => ref.refresh(healthSeriesProvider.future),
+        child: ListView(
+          padding: EdgeInsets.only(
+            top: AppSpacing.space1,
+            bottom: MainShell.bottomInsetFor(context),
           ),
-
-          // URGENT — the one thing that outranks readiness. Tappable, because a
-          // "see a clinician" banner that goes nowhere is the one dead end on
-          // this screen a user would actually try to follow.
-          if (urgentCount > 0)
-            _Section(
-              delay: 0,
-              child: _UrgentBanner(
-                count: urgentCount,
-                onTap: () =>
-                    ref.read(mainTabProvider.notifier).select(MainTab.insights),
-              ),
+          children: [
+            // HEADER
+            _Header(
+              date: DateFormat('EEEE, d MMMM').format(DateTime.now()),
+              synced: synced,
+              greeting: _greeting(),
+              refreshing: loading,
+              onRefresh: () => ref.invalidate(healthSeriesProvider),
+              onSettings: () =>
+                  ref.read(mainTabProvider.notifier).select(MainTab.settings),
             ),
 
-          // MORNING BRIEF — the composed plan. Above readiness because the score
-          // is an input to it, and a user who reads one thing should read the
-          // plan, not the number.
-          if (brief != null)
-            _Section(
-              delay: 20,
-              child: _BriefCard(
-                headline: brief.headline,
-                detail: '${brief.workout.title} · ${brief.foodFocus.title}',
-                onTap: () =>
-                    MainShell.push(context, const MorningBriefScreen()),
-              ),
-            ),
-
-          // HERO
-          _Section(
-            delay: 40,
-            child: loading && metrics == null
-                ? const Skeleton(height: 248)
-                : ReadinessHero(
-                    readiness: readiness,
-                    fallbackHint:
-                        'Keep wearing your watch — seven days of data unlocks '
-                        'your score.',
-                    onTap: () => ref
-                        .read(mainTabProvider.notifier)
-                        .select(MainTab.insights),
-                  ),
-          ),
-
-          // PRIMARY SIGNALS — HRV and resting HR carry 65% of readiness.
-          _Section(
-            delay: 120,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeader(
-                  title: 'Your signals',
-                  actionLabel: series == null ? null : '${series.length} days',
-                  onAction: series == null
-                      ? null
-                      : () => ref.invalidate(healthSeriesProvider),
+            // URGENT — the one thing that outranks readiness. Tappable, because a
+            // "see a clinician" banner that goes nowhere is the one dead end on
+            // this screen a user would actually try to follow.
+            if (urgentCount > 0)
+              _Section(
+                delay: 0,
+                child: _UrgentBanner(
+                  count: urgentCount,
+                  onTap: () => ref
+                      .read(mainTabProvider.notifier)
+                      .select(MainTab.insights),
                 ),
-                if (metrics == null)
-                  const Column(
-                    spacing: 10,
-                    children: [
-                      Row(
-                        spacing: 10,
-                        children: [
-                          Expanded(child: Skeleton(height: 150)),
-                          Expanded(child: Skeleton(height: 150)),
-                        ],
-                      ),
-                      Skeleton(height: 84, radius: AppRadius.md),
-                    ],
-                  )
-                else
-                  Column(
-                    spacing: 10,
-                    children: [
-                      Row(
-                        spacing: 10,
-                        children: [
-                          for (final key in const [
-                            MetricKey.hrv,
-                            MetricKey.restingHeartRate,
-                          ])
-                            Expanded(
-                              child: StatTile(
-                                stats: metrics[key]!,
-                                onTap: () => _openMetric(context, key),
-                              ),
-                            ),
-                        ],
-                      ),
-                      Row(
-                        spacing: AppSpacing.space2,
-                        children: [
-                          for (final key in const [
-                            MetricKey.sleepDuration,
-                            MetricKey.sleepEfficiency,
-                            MetricKey.steps,
-                            MetricKey.activeEnergy,
-                          ])
-                            Expanded(
-                              child: SignalChip(
-                                stats: metrics[key]!,
-                                onTap: () => _openMetric(context, key),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
+              ),
 
-          // FUEL — today's intake against today's target, and the way into the
-          // restaurant picker. Only rendered once targets exist; a calorie strip
-          // reading "0 / 0" is worse than no strip.
-          if (targets != null)
+            // MORNING BRIEF — the composed plan. Above readiness because the score
+            // is an input to it, and a user who reads one thing should read the
+            // plan, not the number.
+            if (brief != null)
+              _Section(
+                delay: 20,
+                child: _BriefCard(
+                  headline: brief.headline,
+                  detail: '${brief.workout.title} · ${brief.foodFocus.title}',
+                  onTap: () =>
+                      MainShell.push(context, const MorningBriefScreen()),
+                ),
+              ),
+
+            // HERO
             _Section(
-              delay: 160,
+              delay: 40,
+              child: loading && metrics == null
+                  ? const Skeleton(height: 248)
+                  : ReadinessHero(
+                      readiness: readiness,
+                      fallbackHint:
+                          'Keep wearing your watch — seven days of data unlocks '
+                          'your score.',
+                      onTap: () => ref
+                          .read(mainTabProvider.notifier)
+                          .select(MainTab.insights),
+                    ),
+            ),
+
+            // PRIMARY SIGNALS — HRV and resting HR carry 65% of readiness.
+            _Section(
+              delay: 120,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SectionHeader(
-                    title: 'Fuel',
-                    actionLabel: 'Log a meal',
-                    onAction: () => showLogMealSheet(context),
+                    title: 'Your signals',
+                    actionLabel: series == null
+                        ? null
+                        : '${series.length} days',
+                    onAction: series == null
+                        ? null
+                        : () => ref.invalidate(healthSeriesProvider),
                   ),
-                  _FuelCard(
-                    caloriesConsumed: consumed.calories,
-                    caloriesTarget: targets.calories,
-                    proteinConsumed: consumed.proteinG,
-                    proteinTarget: targets.macros.proteinG,
-                    remaining: remaining,
-                    isCheatDay: targets.isCheatDay,
-                    onOpenFood: () =>
-                        ref.read(mainTabProvider.notifier).select(MainTab.food),
-                    onOpenDining: () =>
-                        MainShell.push(context, const DiningScreen()),
-                  ),
+                  if (metrics == null)
+                    const Column(
+                      spacing: 10,
+                      children: [
+                        Row(
+                          spacing: 10,
+                          children: [
+                            Expanded(child: Skeleton(height: 150)),
+                            Expanded(child: Skeleton(height: 150)),
+                          ],
+                        ),
+                        Skeleton(height: 84, radius: AppRadius.md),
+                      ],
+                    )
+                  else
+                    Column(
+                      spacing: 10,
+                      children: [
+                        Row(
+                          spacing: 10,
+                          children: [
+                            for (final key in const [
+                              MetricKey.hrv,
+                              MetricKey.restingHeartRate,
+                            ])
+                              Expanded(
+                                child: StatTile(
+                                  stats: metrics[key]!,
+                                  onTap: () => _openMetric(context, key),
+                                ),
+                              ),
+                          ],
+                        ),
+                        Row(
+                          spacing: AppSpacing.space2,
+                          children: [
+                            for (final key in const [
+                              MetricKey.sleepDuration,
+                              MetricKey.sleepEfficiency,
+                              MetricKey.steps,
+                              MetricKey.activeEnergy,
+                            ])
+                              Expanded(
+                                child: SignalChip(
+                                  stats: metrics[key]!,
+                                  onTap: () => _openMetric(context, key),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
 
-          // HEADLINE FINDING — the product's differentiator.
-          _Section(
-            delay: 200,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeader(
-                  title: 'What we found',
-                  count: insights.length,
-                  actionLabel: insights.length > 1 ? 'See all' : null,
-                  onAction: insights.length > 1
-                      ? () => ref
-                            .read(mainTabProvider.notifier)
-                            .select(MainTab.insights)
-                      : null,
+            // FUEL — today's intake against today's target, and the way into the
+            // restaurant picker. Only rendered once targets exist; a calorie strip
+            // reading "0 / 0" is worse than no strip.
+            if (targets != null)
+              _Section(
+                delay: 160,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SectionHeader(
+                      title: 'Fuel',
+                      actionLabel: 'Log a meal',
+                      onAction: () =>
+                          MainShell.push(context, const LogMealScreen()),
+                    ),
+                    _FuelCard(
+                      caloriesConsumed: consumed.calories,
+                      caloriesTarget: targets.calories,
+                      proteinConsumed: consumed.proteinG,
+                      proteinTarget: targets.macros.proteinG,
+                      remaining: remaining,
+                      isCheatDay: targets.isCheatDay,
+                      onOpenFood: () => ref
+                          .read(mainTabProvider.notifier)
+                          .select(MainTab.food),
+                      onOpenDining: () =>
+                          MainShell.push(context, const DiningScreen()),
+                    ),
+                  ],
                 ),
-                if (loading && metrics == null)
-                  const Skeleton(height: 168)
-                else if (headline != null)
-                  _HeadlineInsight(
-                    insight: headline,
-                    onTap: () => ref
-                        .read(mainTabProvider.notifier)
-                        .select(MainTab.insights),
-                  )
-                else
-                  _NoFindings(hasLabData: hasLabData),
-              ],
-            ),
-          ),
+              ),
 
-          // ACTIONS — a vertical list, nothing hidden behind a swipe.
-          if (actions.isNotEmpty)
+            // HEADLINE FINDING — the product's differentiator.
             _Section(
-              delay: 280,
+              delay: 200,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SectionHeader(title: 'Do this today'),
-                  _ActionList(
-                    actions: actions,
-                    onTap: () => ref
-                        .read(mainTabProvider.notifier)
-                        .select(MainTab.insights),
+                  SectionHeader(
+                    title: 'What we found',
+                    count: insights.length,
+                    actionLabel: insights.length > 1 ? 'See all' : null,
+                    onAction: insights.length > 1
+                        ? () => ref
+                              .read(mainTabProvider.notifier)
+                              .select(MainTab.insights)
+                        : null,
+                  ),
+                  if (loading && metrics == null)
+                    const Skeleton(height: 168)
+                  else if (headline != null)
+                    HeadlineInsight(
+                      insight: headline,
+                      onTap: () => ref
+                          .read(mainTabProvider.notifier)
+                          .select(MainTab.insights),
+                    )
+                  else
+                    _NoFindings(hasLabData: hasLabData),
+                ],
+              ),
+            ),
+
+            // ACTIONS — a vertical list, nothing hidden behind a swipe.
+            if (actions.isNotEmpty)
+              _Section(
+                delay: 280,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionHeader(title: 'Do this today'),
+                    SurfaceCard(
+                      padded: false,
+                      child: Column(
+                        children: [
+                          for (final entry in actions)
+                            ActionRow(
+                              suggestion: entry.suggestion,
+                              source: entry.source,
+                              isLast: entry == actions.last,
+                              onTap: () => ref
+                                  .read(mainTabProvider.notifier)
+                                  .select(MainTab.insights),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // LAB STATUS — keeps the correlation half of the product alive.
+            _Section(
+              delay: 340,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SectionHeader(
+                    title: 'Blood work',
+                    actionLabel: report != null ? 'Open latest' : 'Add report',
+                    onAction: openLatestReportOrUpload,
+                  ),
+                  LabStatusCard(
+                    report: report,
+                    flaggedCount: flaggedCount,
+                    onTap: openLatestReportOrUpload,
                   ),
                 ],
               ),
             ),
 
-          // LAB STATUS — keeps the correlation half of the product alive.
-          _Section(
-            delay: 340,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeader(
-                  title: 'Blood work',
-                  actionLabel: report != null ? 'Open latest' : 'Add report',
-                  onAction: openLatestReportOrUpload,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space8 + AppSpacing.space2,
+                AppSpacing.space6,
+                AppSpacing.space8 + AppSpacing.space2,
+                0,
+              ),
+              child: Text(
+                // Never let sample telemetry read as the user's own.
+                syntheticData
+                    ? 'Showing a sample 35-day telemetry series — connect Apple '
+                          'Health for your own. Not medical advice, and not a '
+                          'diagnosis.'
+                    : 'Statistical associations in your own data — not medical '
+                          'advice, and not a diagnosis.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.cardMeta.copyWith(
+                  fontSize: 10,
+                  height: 1.5,
                 ),
-                _LabStatusCard(
-                  report: report,
-                  flaggedCount: flaggedCount,
-                  onTap: openLatestReportOrUpload,
-                ),
-              ],
+              ),
             ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space8 + AppSpacing.space2,
-              AppSpacing.space6,
-              AppSpacing.space8 + AppSpacing.space2,
-              0,
-            ),
-            child: Text(
-              // Never let sample telemetry read as the user's own.
-              syntheticData
-                  ? 'Showing a sample 35-day telemetry series — connect Apple '
-                        'Health for your own. Not medical advice, and not a '
-                        'diagnosis.'
-                  : 'Statistical associations in your own data — not medical '
-                        'advice, and not a diagnosis.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.cardMeta.copyWith(fontSize: 10, height: 1.5),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -364,7 +387,10 @@ class _Section extends StatelessWidget {
         AppSpacing.space5,
         0,
       ),
-      child: FadeIn(delay: Duration(milliseconds: delay), child: child),
+      child: FadeIn(
+        delay: Duration(milliseconds: delay),
+        child: child,
+      ),
     );
   }
 }
@@ -618,6 +644,7 @@ class _FuelCard extends StatelessWidget {
         color: AppColors.surface,
         border: Border.all(color: AppColors.hairline),
         borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: AppShadows.sm,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -628,10 +655,7 @@ class _FuelCard extends StatelessWidget {
                 '$caloriesConsumed of $caloriesTarget calories eaten today',
             onTap: onOpenFood,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 spacing: AppSpacing.space3,
                 children: [
@@ -682,10 +706,7 @@ class _FuelCard extends StatelessWidget {
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.hairline)),
               ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 spacing: AppSpacing.space3,
                 children: [
@@ -731,100 +752,6 @@ class _RowIcon extends StatelessWidget {
   }
 }
 
-/// The engine's top finding, rendered louder than the rows around it: this is the
-/// one thing on the screen no other app on the user's phone could have produced.
-class _HeadlineInsight extends StatelessWidget {
-  const _HeadlineInsight({required this.insight, required this.onTap});
-
-  final Insight insight;
-  final VoidCallback onTap;
-
-  static Color _severityColour(InsightSeverity severity) => switch (severity) {
-    InsightSeverity.urgent => AppColors.critical,
-    InsightSeverity.action => AppColors.abnormal,
-    InsightSeverity.watch => AppColors.borderline,
-    InsightSeverity.info => AppColors.normal,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final colour = _severityColour(insight.severity);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: PressableScale(
-        scaleTo: 0.99,
-        semanticLabel: '${insight.severity.label}: ${insight.title}',
-        semanticHint: 'Opens your findings',
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(height: 3, color: colour),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    spacing: AppSpacing.space2,
-                    children: [
-                      Text(
-                        insight.severity.label.toUpperCase(),
-                        style: AppTextStyles.tag.copyWith(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1,
-                          color: colour,
-                        ),
-                      ),
-                      if (insight.isCrossDomain)
-                        Expanded(
-                          child: Text(
-                            '· BLOOD WORK × RECOVERY',
-                            style: AppTextStyles.tag.copyWith(
-                              fontSize: 9,
-                              letterSpacing: 0.8,
-                              color: AppColors.faint,
-                            ),
-                          ),
-                        )
-                      else
-                        const Spacer(),
-                      const Icon(
-                        Icons.chevron_right,
-                        size: 15,
-                        color: AppColors.faint,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    insight.title,
-                    style: AppTextStyles.h5.copyWith(height: 1.3),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    insight.summary,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.cardBody.copyWith(height: 1.45),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _NoFindings extends StatelessWidget {
   const _NoFindings({required this.hasLabData});
 
@@ -838,6 +765,7 @@ class _NoFindings extends StatelessWidget {
         color: AppColors.surface,
         border: Border.all(color: AppColors.hairline),
         borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: AppShadows.sm,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -870,188 +798,6 @@ class _NoFindings extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ActionList extends StatelessWidget {
-  const _ActionList({required this.actions, required this.onTap});
-
-  final List<FeedEntry> actions;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (final entry in actions)
-            _ActionRow(
-              entry: entry,
-              isLast: entry == actions.last,
-              onTap: onTap,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.entry,
-    required this.isLast,
-    required this.onTap,
-  });
-
-  final FeedEntry entry;
-  final bool isLast;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final suggestion = entry.suggestion;
-
-    return PressableScale(
-      scaleTo: 0.99,
-      semanticLabel: suggestion.title,
-      semanticHint: 'From: ${entry.source.title}',
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          border: isLast
-              ? null
-              : const Border(bottom: BorderSide(color: AppColors.hairline)),
-        ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space4,
-          vertical: AppSpacing.space3 + 2,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: AppSpacing.space3,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 5),
-              child: Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: AppColors.brand,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    suggestion.title,
-                    style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    suggestion.detail,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.cardBody.copyWith(height: 1.45),
-                  ),
-                  const SizedBox(height: 3),
-                  // Attribution matters: an instruction with no stated reason is
-                  // the first thing users stop following.
-                  Text(
-                    'From: ${entry.source.title}',
-                    style: AppTextStyles.cardMeta.copyWith(
-                      fontSize: 10,
-                      color: AppColors.brand600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Latest report, or the invitation to add one.
-class _LabStatusCard extends StatelessWidget {
-  const _LabStatusCard({
-    required this.report,
-    required this.flaggedCount,
-    required this.onTap,
-  });
-
-  final LabReport? report;
-  final int flaggedCount;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final panel = report;
-
-    final title = panel == null
-        ? 'No blood work yet'
-        : flaggedCount == 0
-        ? 'All markers optimal'
-        : '$flaggedCount marker${flaggedCount == 1 ? '' : 's'} to watch';
-
-    final subtitle = panel == null
-        ? 'A wearable tells you recovery is down. Blood work tells you why.'
-        : '${panel.panelName ?? 'Blood panel'} · '
-              '${DateFormat('d MMM yyyy').format(panel.collectedAt ?? panel.uploadedAt)}';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: PressableScale(
-        scaleTo: 0.99,
-        semanticLabel: title,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            spacing: AppSpacing.space3,
-            children: [
-              const _RowIcon(Icons.science_outlined),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: AppTextStyles.cardMeta.copyWith(height: 1.4),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right,
-                size: 15,
-                color: AppColors.faint,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

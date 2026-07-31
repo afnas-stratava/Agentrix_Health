@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -107,7 +109,14 @@ final lastSyncedAtProvider = StateProvider<DateTime?>((ref) => null);
 final healthSeriesProvider = FutureProvider<List<DailySnapshot>>((ref) async {
   final provider = await ref.watch(healthProviderInstance.future);
   final to = DateTime.now();
-  final from = addDays(startOfLocalDay(to), -(_windowDays - 1));
+
+  // Fetch whichever is longer: the engine's fixed recent+baseline window, or the
+  // analysis window the user chose. Fetching only 35 days would make the 60- and
+  // 90-day settings inert — the slider would move and nothing would change.
+  final days = math.max(_windowDays, ref.watch(analysisWindowProvider).days);
+  // Inclusive of both endpoints, so a 90-day window yields 91 days — which is
+  // what the React Native build reports in the "Your signals" header.
+  final from = addDays(startOfLocalDay(to), -days);
 
   var series = aggregateDailySnapshots(
     // A store that never answers is treated exactly like an empty one: the
@@ -170,6 +179,7 @@ final engineContextProvider = Provider<EngineContext?>((ref) {
     // From Settings, not the profile: reference intervals are sex-specific, and
     // "prefer not to say" must resolve to the wider interval rather than a guess.
     sex: ref.watch(biologicalSexProvider),
+    analysisWindowDays: ref.watch(analysisWindowProvider).days,
   );
 });
 

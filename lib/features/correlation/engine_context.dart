@@ -186,14 +186,24 @@ EngineContext buildEngineContext({
   String? labCollectedAt,
   BiologicalSex sex = BiologicalSex.unspecified,
   String? now,
+
+  /// How far back correlations look, from Settings. The recent/baseline split
+  /// is unaffected — that is physiology, not a preference — but a longer window
+  /// gives `correlate` more paired days to work with, which is the whole point
+  /// of the setting.
+  int? analysisWindowDays,
 }) {
+  final windowed = analysisWindowDays == null
+      ? series
+      : series.sublist(math.max(0, series.length - analysisWindowDays));
+
   final metrics = <MetricKey, MetricStats>{
-    for (final key in MetricKey.values) key: _buildMetricStats(series, key),
+    for (final key in MetricKey.values) key: _buildMetricStats(windowed, key),
   };
 
   return EngineContext(
-    days: series.map((s) => s.day).toList(),
-    series: series,
+    days: windowed.map((s) => s.day).toList(),
+    series: windowed,
     metrics: metrics,
     biomarkers: {
       for (final biomarker in biomarkers)

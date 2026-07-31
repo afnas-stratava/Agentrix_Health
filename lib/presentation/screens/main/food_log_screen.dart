@@ -6,34 +6,60 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/charts/day_column_chart.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/fade_in.dart';
+import '../../../core/widgets/pressable_scale.dart';
+import '../../../core/widgets/screen_back_button.dart';
 import '../../../core/widgets/section_header.dart';
-import '../../../core/util/iso_day.dart';
-import '../../../domain/entities/nutrition/macros.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../domain/entities/nutrition/meal_entry.dart';
 import '../../../domain/entities/nutrition/nutrition_targets.dart';
 import '../../../features/nutrition/patterns.dart';
+import '../../providers/main_tab_provider.dart';
 import '../../providers/nutrition_providers.dart';
-import 'log_meal_sheet.dart';
+import '../../widgets/nutrition/macro_summary.dart';
+import 'dining_screen.dart';
+import 'log_meal_screen.dart';
 import 'main_shell.dart';
 
-/// The food log.
+/// Mirrors `app/(tabs)/food.tsx`.
 ///
-/// Ordered by what a user actually wants at the moment they open it: what is left
-/// today, then what they have logged, then the week's pattern. The pattern is
-/// last because it is the only part not actionable in the next ten minutes — and
-/// it is a *computed* finding, not a caption.
+/// Today at the top, the week's patterns underneath. Ordered that way because
+/// logging is a today-shaped activity and analysis is a week-shaped one — putting
+/// the weekly chart first would push the primary action below the fold on every
+/// launch.
 class FoodLogScreen extends ConsumerWidget {
   const FoodLogScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final targets = ref.watch(nutritionTargetsProvider);
+
+    // Targets need height, weight and age. Without them every number on this
+    // screen would be invented, so the screen asks for them instead of guessing.
+    if (targets == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space6),
+          child: EmptyState(
+            icon: Icons.restaurant_outlined,
+            title: 'Tell us a little about you first',
+            body: 'Calorie and macro targets need your height, weight and age. '
+                'It takes about thirty seconds.',
+            actionLabel: 'Complete your profile',
+            onAction: () =>
+                ref.read(mainTabProvider.notifier).select(MainTab.settings),
+          ),
+        ),
+      );
+    }
+
     final meals = ref.watch(todayMealsProvider);
     final consumed = ref.watch(consumedTodayProvider);
-    final targets = ref.watch(nutritionTargetsProvider);
-    final weekly = ref.watch(weeklyNutritionProvider);
     final water = ref.watch(hydrationTodayProvider);
+    final week = ref.watch(weeklyNutritionProvider);
+    final isCheatDay = ref.watch(cheatDayProvider);
+    final remaining = targets.calories - consumed.calories;
 
     return ListView(
       padding: EdgeInsets.only(
@@ -41,67 +67,306 @@ class FoodLogScreen extends ConsumerWidget {
         bottom: MainShell.bottomInsetFor(context),
       ),
       children: [
+        // HEADER
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                DateFormat('EEEE, MMMM d').format(DateTime.now()),
-                style: AppTextStyles.cardMeta.copyWith(
-                  fontSize: 11,
-                  color: AppColors.muted,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text('Food log', style: AppTextStyles.h3),
-            ],
-          ),
-        ),
-
-        _Section(
-          delay: 20,
-          child: _MacroSummary(consumed: consumed, targets: targets),
-        ),
-
-        _Section(
-          delay: 60,
-          child: AppButton(
-            label: 'Log a meal',
-            block: true,
-            leading: const Icon(Icons.add, size: 16),
-            onPressed: () => showLogMealSheet(context),
-          ),
-        ),
-
-        _Section(
-          delay: 100,
-          child: _WaterRow(consumed: water, targetMl: targets?.waterMl),
-        ),
-
-        _Section(
-          delay: 140,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeader(title: 'Today', count: meals.length),
-              if (meals.isEmpty)
-                const _EmptyToday()
-              else
-                Column(
-                  spacing: AppSpacing.space2,
+              const ScreenBackButton(),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final meal in meals) _MealCard(meal: meal),
+                    Text(
+                      'Today',
+                      style: AppTextStyles.cardMeta.copyWith(
+                        fontSize: 11,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Food',
+                      style: AppTextStyles.h3.copyWith(fontSize: 25),
+                    ),
                   ],
                 ),
+              ),
+              _CheatDayToggle(
+                active: isCheatDay,
+                onTap: () => ref.read(cheatDayProvider.notifier).toggle(),
+              ),
             ],
           ),
         ),
 
-        _Section(delay: 180, child: _WeekCard(weekly: weekly)),
+        // TODAY'S BUDGET
+        _Section(
+          delay: 40,
+          child: SurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  spacing: AppSpacing.space4,
+                  children: [
+                    CalorieRing(
+                      consumed: consumed.calories,
+                      target: targets.calories,
+                    ),
+                    Expanded(
+                      child: MacroBars(
+                        consumed: consumed,
+                        targets: targets.macros,
+                        sugarCeilingG: targets.addedSugarCeilingG,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: AppSpacing.space3),
+                  padding: const EdgeInsets.only(top: AppSpacing.space3),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: AppColors.hairline),
+                    ),
+                  ),
+                  child: Text(
+                    '${targets.energyBasis == EnergyBasis.measured ? 'Target built from what your watch measured you burn this week.' : 'Target estimated from your profile — it sharpens once your watch has a week of data.'}'
+                    '${targets.isCheatDay ? ' Cheat day is on: +15% calories.' : ''}',
+                    style: AppTextStyles.cardMeta.copyWith(
+                      fontSize: 11,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
 
-        if (weekly.patterns.isNotEmpty)
-          _Section(delay: 220, child: _PatternsCard(weekly: weekly)),
+        // WATER
+        _Section(
+          delay: 100,
+          child: SurfaceCard(
+            child: WaterTracker(
+              ml: water,
+              targetMl: targets.waterMl,
+              onAdd: (amount) =>
+                  ref.read(mealLogProvider.notifier).addWater(amount),
+            ),
+          ),
+        ),
+
+        // LOG ACTIONS
+        _Section(
+          delay: 160,
+          child: Row(
+            spacing: AppSpacing.space3,
+            children: [
+              Expanded(
+                child: AppButton(
+                  label: 'Log a meal',
+                  leading: const Icon(Icons.add, size: 16),
+                  onPressed: () => MainShell.push(context, const LogMealScreen()),
+                ),
+              ),
+              Expanded(
+                child: AppButton(
+                  label: 'Eat out',
+                  variant: AppButtonVariant.secondary,
+                  leading: const Icon(Icons.place_outlined, size: 15),
+                  onPressed: () =>
+                      MainShell.push(context, const DiningScreen()),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // TODAY'S MEALS
+        _Section(
+          delay: 220,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SectionHeader(
+                title: "Today's meals",
+                count: meals.length,
+                actionLabel: remaining > 0 ? '$remaining kcal left' : null,
+              ),
+              if (meals.isEmpty)
+                SurfaceCard(
+                  child: EmptyState(
+                    icon: Icons.restaurant_outlined,
+                    tone: EmptyStateTone.onCard,
+                    title: 'Nothing logged yet',
+                    body: 'Photograph your plate or pick from the food list — it '
+                        'takes a couple of taps and it is what makes the weekly '
+                        'patterns work.',
+                    actionLabel: 'Log your first meal',
+                    onAction: () => MainShell.push(context, const LogMealScreen()),
+                  ),
+                )
+              else
+                SurfaceCard(
+                  padded: false,
+                  child: Column(
+                    children: [
+                      for (final meal in meals)
+                        _MealRow(meal: meal, isLast: meal == meals.last),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        // WEEKLY PATTERNS
+        _Section(
+          delay: 280,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SectionHeader(title: 'This week', count: week.patterns.length),
+              if (week.isSparse)
+                SurfaceCard(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: AppSpacing.space3,
+                    children: [
+                      const Icon(
+                        Icons.trending_up,
+                        size: 18,
+                        color: AppColors.faint,
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${week.loggedDays} of 7 days logged',
+                              style: AppTextStyles.cardTitle.copyWith(
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Pattern analysis needs at least three days '
+                              'before it says anything — three clean days and '
+                              'four heavy ones average out to “fine”, which is '
+                              'exactly the conclusion worth avoiding.',
+                              style: AppTextStyles.cardBody.copyWith(
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (week.patterns.isEmpty)
+                SurfaceCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Nothing to flag this week',
+                        style: AppTextStyles.cardTitle.copyWith(fontSize: 13),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Across ${week.loggedDays} logged days, no macro, '
+                        'sugar, sodium or timing pattern crossed a threshold '
+                        'worth mentioning.',
+                        style: AppTextStyles.cardBody.copyWith(height: 1.45),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                SurfaceCard(
+                  padded: false,
+                  child: Column(
+                    children: [
+                      for (final pattern in week.patterns)
+                        _PatternRow(
+                          pattern: pattern,
+                          isLast: pattern == week.patterns.last,
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        // WEEK AVERAGES
+        if (!week.isSparse)
+          _Section(
+            delay: 340,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionHeader(
+                  title: 'Daily average',
+                  actionLabel: '${week.loggedDays} logged days',
+                ),
+                SurfaceCard(child: _AverageGrid(week: week)),
+              ],
+            ),
+          ),
+
+        // DINING CTA
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space5,
+            AppSpacing.space6,
+            AppSpacing.space5,
+            0,
+          ),
+          child: PressableScale(
+            scaleTo: 0.99,
+            semanticLabel: 'See restaurant recommendations',
+            onTap: () => MainShell.push(context, const DiningScreen()),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space4,
+                vertical: 14,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border.all(color: AppColors.hairline),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Row(
+                spacing: AppSpacing.space2 + 2,
+                children: [
+                  const Icon(
+                    Icons.place_outlined,
+                    size: 17,
+                    color: AppColors.brand,
+                  ),
+                  Expanded(
+                    child: Text(
+                      remaining > 200
+                          ? 'Eating out? $remaining kcal left today'
+                          : 'Find somewhere to eat nearby',
+                      style: AppTextStyles.cardTitle.copyWith(fontSize: 13),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: AppColors.faint,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -118,7 +383,7 @@ class _Section extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space5,
-        AppSpacing.space5,
+        AppSpacing.space4,
         AppSpacing.space5,
         0,
       ),
@@ -127,403 +392,144 @@ class _Section extends StatelessWidget {
   }
 }
 
-/// Calories left, then the macros against target. "Left" rather than "eaten"
-/// because that is the number that changes a decision at 7pm.
-class _MacroSummary extends StatelessWidget {
-  const _MacroSummary({required this.consumed, required this.targets});
+/// Cheat day is an explicit choice, never inferred — so it is a switch with a
+/// visible on state rather than something the app decides for the user.
+class _CheatDayToggle extends StatelessWidget {
+  const _CheatDayToggle({required this.active, required this.onTap});
 
-  final Macros consumed;
-  final NutritionTargets? targets;
-
-  @override
-  Widget build(BuildContext context) {
-    final target = targets;
-    final remaining = target == null
-        ? null
-        : target.calories - consumed.calories;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space5),
-      decoration: BoxDecoration(
-        color: AppColors.brand900,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            remaining == null
-                ? 'EATEN TODAY'
-                : (remaining >= 0 ? 'LEFT TODAY' : 'OVER TODAY'),
-            style: AppTextStyles.tag.copyWith(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-              color: AppColors.accent2_400,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            spacing: AppSpacing.space2,
-            children: [
-              Text(
-                '${remaining == null ? consumed.calories : remaining.abs()}',
-                style: AppTextStyles.metricLarge.copyWith(
-                  color: AppColors.onBrand,
-                ),
-              ),
-              Text(
-                'kcal',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.onBrandMuted,
-                ),
-              ),
-            ],
-          ),
-          if (target != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              '${consumed.calories} of ${target.calories} kcal · '
-              '${target.energyBasis == EnergyBasis.measured ? 'measured' : 'estimated'} burn',
-              style: AppTextStyles.cardMeta.copyWith(
-                color: AppColors.onBrandFaint,
-                fontSize: 11,
-              ),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.space4),
-          Row(
-            spacing: AppSpacing.space3,
-            children: [
-              _MacroBar(
-                label: 'Protein',
-                actual: consumed.proteinG,
-                target: target?.macros.proteinG.toDouble(),
-              ),
-              _MacroBar(
-                label: 'Carbs',
-                actual: consumed.carbsG,
-                target: target?.macros.carbsG.toDouble(),
-              ),
-              _MacroBar(
-                label: 'Fat',
-                actual: consumed.fatG,
-                target: target?.macros.fatG.toDouble(),
-              ),
-              _MacroBar(
-                label: 'Fibre',
-                actual: consumed.fibreG,
-                target: target?.macros.fibreG.toDouble(),
-              ),
-            ],
-          ),
-          if (target != null) ...[
-            const SizedBox(height: AppSpacing.space3),
-            _SugarLine(
-              consumed: consumed.addedSugarG,
-              ceiling: target.addedSugarCeilingG,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MacroBar extends StatelessWidget {
-  const _MacroBar({
-    required this.label,
-    required this.actual,
-    required this.target,
-  });
-
-  final String label;
-  final double actual;
-  final double? target;
+  final bool active;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final goal = target;
-    final fraction = goal == null || goal <= 0
-        ? 0.0
-        : (actual / goal).clamp(0.0, 1.0);
-
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: AppTextStyles.tag.copyWith(
-              fontSize: 9,
-              letterSpacing: 0.8,
-              color: AppColors.onBrandFaint,
-            ),
+    return Semantics(
+      toggled: active,
+      label: 'Cheat day',
+      hint: 'Raises your calorie target by 15% and stops down-ranking '
+          'indulgent food',
+      child: PressableScale(
+        scaleTo: 0.97,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space3,
+            vertical: 6,
           ),
-          const SizedBox(height: 3),
-          Text(
-            goal == null
-                ? '${actual.round()} g'
-                : '${actual.round()}/${goal.round()}',
-            style: AppTextStyles.bodySmall.copyWith(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onBrand,
+          decoration: BoxDecoration(
+            color: active ? AppColors.limeSoft : AppColors.surface,
+            border: Border.all(
+              color: active ? AppColors.accent2_300 : AppColors.hairline,
             ),
-          ),
-          const SizedBox(height: 5),
-          ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            child: SizedBox(
-              height: 4,
-              child: ColoredBox(
-                color: AppColors.onBrand.withValues(alpha: 0.15),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: fraction,
-                  child: const ColoredBox(color: AppColors.accent2_400),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 6,
+            children: [
+              Icon(
+                Icons.cake_outlined,
+                size: 14,
+                color: active ? AppColors.ink : AppColors.faint,
+              ),
+              Text(
+                'Cheat day',
+                style: AppTextStyles.cardMeta.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: active ? AppColors.ink : AppColors.muted,
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Added sugar gets a line rather than a fifth bar: it is a *ceiling*, not a
-/// target, and rendering it like the others would imply filling it is the goal.
-class _SugarLine extends StatelessWidget {
-  const _SugarLine({required this.consumed, required this.ceiling});
-
-  final double consumed;
-  final int ceiling;
-
-  @override
-  Widget build(BuildContext context) {
-    final over = consumed > ceiling;
-
-    return Row(
-      spacing: AppSpacing.space2,
-      children: [
-        Icon(
-          over ? Icons.warning_amber_rounded : Icons.check_circle_outline,
-          size: 13,
-          color: over ? AppColors.borderline : AppColors.accent2_400,
-        ),
-        Expanded(
-          child: Text(
-            over
-                ? 'Added sugar ${consumed.round()} g — over your $ceiling g ceiling'
-                : 'Added sugar ${consumed.round()} of $ceiling g ceiling',
-            style: AppTextStyles.cardMeta.copyWith(
-              fontSize: 11,
-              color: AppColors.onBrandMuted,
-            ),
+            ],
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _WaterRow extends ConsumerWidget {
-  const _WaterRow({required this.consumed, required this.targetMl});
-
-  final int consumed;
-  final int? targetMl;
-
-  static const _glassMl = 250;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final target = targetMl ?? 2500;
-    final fraction = (consumed / target).clamp(0.0, 1.0);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space4,
-        vertical: AppSpacing.space3,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Row(
-        spacing: AppSpacing.space3,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.brand50,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: const Icon(
-              Icons.water_drop_outlined,
-              size: 16,
-              color: AppColors.brand,
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${(consumed / 1000).toStringAsFixed(1)} of '
-                  '${(target / 1000).toStringAsFixed(1)} L water',
-                  style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: SizedBox(
-                    height: 4,
-                    child: ColoredBox(
-                      color: AppColors.ink.withValues(alpha: 0.08),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: fraction,
-                        child: const ColoredBox(color: AppColors.brand),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          AppButton.icon(
-            leading: const Icon(Icons.add, size: 16),
-            backgroundColor: AppColors.brand50,
-            onPressed: () =>
-                ref.read(mealLogProvider.notifier).addWater(_glassMl),
-          ),
-        ],
       ),
     );
   }
 }
 
-class _EmptyToday extends StatelessWidget {
-  const _EmptyToday();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space4,
-        vertical: AppSpacing.space6,
-      ),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.restaurant_outlined,
-            size: 22,
-            color: AppColors.faint,
-          ),
-          const SizedBox(height: AppSpacing.space2),
-          Text(
-            'Nothing logged yet today',
-            style: AppTextStyles.cardBody,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MealCard extends ConsumerWidget {
-  const _MealCard({required this.meal});
+class _MealRow extends ConsumerWidget {
+  const _MealRow({required this.meal, required this.isLast});
 
   final MealEntry meal;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final macros = meal.macros;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      clipBehavior: Clip.antiAlias,
-      // InkWell rather than PressableScale: this row's only gesture is the
-      // long-press that removes it, which PressableScale does not expose.
-      child: Semantics(
-        label: '${meal.slot.label}: ${meal.summary}',
-        hint: 'Long press to remove',
-        child: InkWell(
-          onLongPress: () => _confirmRemove(context, ref),
-          child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space4),
-          child: Column(
+    return Semantics(
+      label: '${meal.slot.label}: ${meal.summary}',
+      hint: 'Long press to remove',
+      child: InkWell(
+        onLongPress: () => _confirmRemove(context, ref),
+        child: Container(
+          decoration: BoxDecoration(
+            border: isLast
+                ? null
+                : const Border(bottom: BorderSide(color: AppColors.hairline)),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space4,
+            vertical: 14,
+          ),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacing.space3,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    spacing: AppSpacing.space2,
-                    children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      spacing: AppSpacing.space2,
+                      children: [
+                        Text(
+                          meal.slot.label.toUpperCase(),
+                          style: AppTextStyles.tag.copyWith(
+                            fontSize: 9,
+                            letterSpacing: 0.5,
+                            color: AppColors.brand600,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('h:mm a').format(meal.loggedAt),
+                          style: AppTextStyles.cardMeta.copyWith(fontSize: 10),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      meal.summary,
+                      style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${macros.proteinG.round()}P · ${macros.carbsG.round()}C '
+                      '· ${macros.fatG.round()}F · '
+                      '${macros.fibreG.round()} g fibre',
+                      style: AppTextStyles.cardMeta,
+                    ),
+                    if (meal.source != MealSource.database) ...[
+                      const SizedBox(height: 4),
                       Text(
-                        meal.slot.label.toUpperCase(),
-                        style: AppTextStyles.tag.copyWith(
-                          fontSize: 9,
-                          letterSpacing: 0.9,
-                          color: AppColors.brand600,
+                        meal.source.label,
+                        style: AppTextStyles.cardMeta.copyWith(
+                          fontSize: 10,
+                          color: AppColors.faint,
                         ),
                       ),
-                      Text(
-                        DateFormat('h:mm a').format(meal.loggedAt),
-                        style: AppTextStyles.cardMeta.copyWith(fontSize: 10),
-                      ),
                     ],
-                  ),
-                  Text(
-                    '${macros.calories} kcal',
-                    style: AppTextStyles.h6.copyWith(
-                      letterSpacing: 0,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 5),
-              Text(
-                meal.summary,
-                style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                '${macros.proteinG.round()}P · ${macros.carbsG.round()}C · '
-                '${macros.fatG.round()}F · ${macros.fibreG.round()} g fibre',
-                style: AppTextStyles.cardMeta,
-              ),
-              if (meal.source == MealSource.seed ||
-                  meal.source == MealSource.photo ||
-                  meal.source == MealSource.restaurant) ...[
-                const SizedBox(height: 5),
-                Text(
-                  meal.source.label,
-                  style: AppTextStyles.cardMeta.copyWith(
-                    fontSize: 10,
-                    color: AppColors.faint,
-                  ),
+                  ],
                 ),
-              ],
+              ),
+              Text(
+                '${macros.calories} kcal',
+                style: AppTextStyles.h6.copyWith(
+                  letterSpacing: 0,
+                  fontSize: 13,
+                ),
+              ),
             ],
-            ),
           ),
         ),
       ),
@@ -555,146 +561,112 @@ class _MealCard extends ConsumerWidget {
   }
 }
 
-/// The week, from the log — every column is a real sum, and the caption below it
-/// is the analyser's own arithmetic rather than a fixed string.
-class _WeekCard extends StatefulWidget {
-  const _WeekCard({required this.weekly});
+class _PatternRow extends StatelessWidget {
+  const _PatternRow({required this.pattern, required this.isLast});
 
-  final WeeklyNutritionSummary weekly;
-
-  @override
-  State<_WeekCard> createState() => _WeekCardState();
-}
-
-class _WeekCardState extends State<_WeekCard> {
-  int? _selected;
+  final NutritionPattern pattern;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
-    final days = widget.weekly.days;
-    final selected = (_selected ?? days.length - 1).clamp(0, days.length - 1);
+    final colour = pattern.tone == PatternTone.concern
+        ? AppColors.abnormal
+        : AppColors.optimal;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: 'This week',
-          actionLabel: '${widget.weekly.loggedDays} logged',
-        ),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space4),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.hairline),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: AppColors.hairline)),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: 14,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            spacing: AppSpacing.space2,
             children: [
-              DayColumnChart(
-                values: [
-                  for (final day in days)
-                    day.macros.calories == 0
-                        ? null
-                        : day.macros.calories.toDouble(),
-                ],
-                labels: [
-                  for (final day in days)
-                    DateFormat('E').format(fromIsoDay(day.day))[0],
-                ],
-                selectedIndex: selected,
-                formatValue: (value) => '${value.round()} kcal',
-                onSelect: (index) => setState(() => _selected = index),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: colour,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
               ),
-              const SizedBox(height: AppSpacing.space3),
-              Text(
-                widget.weekly.isSparse
-                    ? 'Log at least three days and the weekly pattern analysis '
-                          'switches on.'
-                    : 'Averaging ${widget.weekly.averages.calories} kcal and '
-                          '${widget.weekly.averages.proteinG.round()} g protein '
-                          'across ${widget.weekly.loggedDays} logged days.',
-                style: AppTextStyles.cardBody.copyWith(height: 1.45),
+              Expanded(
+                child: Text(
+                  pattern.title,
+                  style: AppTextStyles.cardTitle.copyWith(
+                    fontSize: 14,
+                    height: 1.3,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Counted over days, never averaged — averaging is what hides a pattern.
-class _PatternsCard extends StatelessWidget {
-  const _PatternsCard({required this.weekly});
-
-  final WeeklyNutritionSummary weekly;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(title: 'Patterns', count: weekly.patterns.length),
-        Column(
-          spacing: AppSpacing.space2,
-          children: [
-            for (final pattern in weekly.patterns)
-              _PatternRow(pattern: pattern),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _PatternRow extends StatelessWidget {
-  const _PatternRow({required this.pattern});
-
-  final NutritionPattern pattern;
-
-  @override
-  Widget build(BuildContext context) {
-    final isWin = pattern.tone == PatternTone.win;
-    final accent = isWin ? AppColors.optimal : AppColors.borderline;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space4),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacing.space3,
-        children: [
-          Container(
-            width: 3,
-            height: 34,
-            decoration: BoxDecoration(
-              color: accent,
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  pattern.title,
-                  style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  pattern.detail,
-                  style: AppTextStyles.cardBody.copyWith(height: 1.45),
-                ),
-              ],
+          Padding(
+            padding: const EdgeInsets.only(left: 14, top: 4),
+            child: Text(
+              pattern.detail,
+              style: AppTextStyles.cardBody.copyWith(height: 1.45),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AverageGrid extends StatelessWidget {
+  const _AverageGrid({required this.week});
+
+  final WeeklyNutritionSummary week;
+
+  @override
+  Widget build(BuildContext context) {
+    final averages = week.averages;
+    final stats = <(String, String)>[
+      ('Calories', '${averages.calories}'),
+      ('Protein', '${averages.proteinG.round()} g'),
+      ('Carbs', '${averages.carbsG.round()} g'),
+      ('Fat', '${averages.fatG.round()} g'),
+      ('Fibre', '${averages.fibreG.round()} g'),
+      ('Added sugar', '${averages.addedSugarG.round()} g'),
+    ];
+
+    return Wrap(
+      children: [
+        for (final stat in stats)
+          FractionallySizedBox(
+            widthFactor: 1 / 3,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    stat.$1.toUpperCase(),
+                    style: AppTextStyles.tag.copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                      color: AppColors.faint,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    stat.$2,
+                    style: AppTextStyles.metricSmall.copyWith(fontSize: 17),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

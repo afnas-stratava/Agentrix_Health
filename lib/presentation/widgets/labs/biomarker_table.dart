@@ -75,7 +75,7 @@ class BiomarkerTable extends StatelessWidget {
             child: Column(
               children: [
                 for (final biomarker in entry.value)
-                  _BiomarkerRow(
+                  BiomarkerRow(
                     biomarker: biomarker,
                     isLast: biomarker == entry.value.last,
                   ),
@@ -88,8 +88,17 @@ class BiomarkerTable extends StatelessWidget {
   }
 }
 
-class _BiomarkerRow extends StatelessWidget {
-  const _BiomarkerRow({required this.biomarker, required this.isLast});
+/// One analyte: its name, the interval it was judged against, its value and
+/// flag.
+///
+/// Public because the report screen groups rows by panel itself and needs the
+/// same row rendering without the table's own grouping.
+class BiomarkerRow extends StatelessWidget {
+  const BiomarkerRow({
+    super.key,
+    required this.biomarker,
+    required this.isLast,
+  });
 
   final Biomarker biomarker;
   final bool isLast;

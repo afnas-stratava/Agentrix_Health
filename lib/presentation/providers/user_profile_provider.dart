@@ -125,6 +125,11 @@ class UserProfileNotifier extends Notifier<UserProfile> {
     _persistDebounced();
   }
 
+  void setTargetWeight(double? weightKg) {
+    state = state.copyWith(targetWeightKg: weightKg);
+    _persistDebounced();
+  }
+
   void setActivityLevel(ActivityLevel level) {
     state = state.copyWith(activityLevel: level);
     _persistNow();

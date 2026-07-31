@@ -11,17 +11,25 @@ import 'app_colors.dart';
 /// so a single `GoogleFonts.interTight` call covers every face that
 /// `src/theme/fonts.ts` has to register individually.
 abstract final class AppTextStyles {
+  /// Tracking defaults to **zero**, matching Tailwind.
+  ///
+  /// It used to default to `-0.02 * fontSize`, which was wrong twice over: RN
+  /// applies negative tracking only to the `metric*` sizes, and because
+  /// `copyWith(fontSize:)` does not recompute letterSpacing, every call site
+  /// that resized a heading kept the tracking computed for the *original* size.
+  /// A 14px card title was carrying tracking meant for 17px, which is why the
+  /// whole app read tighter than the React Native original.
   static TextStyle _heading({
     required double fontSize,
     FontWeight weight = FontWeight.w700,
     double? height,
-    double? letterSpacing,
+    double letterSpacing = 0,
   }) {
     return GoogleFonts.interTight(
       fontSize: fontSize,
       fontWeight: weight,
       height: height ?? 1.15,
-      letterSpacing: letterSpacing ?? -0.02 * fontSize,
+      letterSpacing: letterSpacing,
       color: AppColors.ink,
     );
   }
@@ -40,19 +48,33 @@ abstract final class AppTextStyles {
     );
   }
 
-  static final TextStyle h1 = _heading(fontSize: 40);
+  static final TextStyle h1 = _heading(fontSize: 40, height: 46 / 40);
   static final TextStyle h2 = _heading(fontSize: 32);
-  static final TextStyle h3 = _heading(fontSize: 25);
+
+  /// Tab-screen title. `text-3xl` in RN — Insights, Labs and Settings all use
+  /// it, and it is noticeably larger than the 25px used for Today and Food.
+  static final TextStyle screenTitle = _heading(fontSize: 30, height: 1.2);
+
+  static final TextStyle h3 = _heading(fontSize: 25, height: 30 / 25);
   static final TextStyle h4 = _heading(fontSize: 20);
   static final TextStyle h5 = _heading(fontSize: 16, weight: FontWeight.w600);
 
-  /// Section/step label — uppercase with wide tracking at the call site.
-  static final TextStyle h6 = GoogleFonts.interTight(
-    fontSize: 13,
-    fontWeight: FontWeight.w600,
+  /// Centred page title on a pushed route — `text-[15px] font-bold` in RN.
+  static final TextStyle h6 = _heading(
+    fontSize: 15,
     height: 1.2,
-    letterSpacing: 0.08 * 13,
-    color: AppColors.ink,
+    weight: FontWeight.w700,
+  );
+
+  /// Uppercase micro-label: `text-[11px] font-semibold uppercase tracking-wider`.
+  ///
+  /// Tailwind's `tracking-wider` is 0.05em — 0.55px here, not the ~1.1px this
+  /// app had been using, which read as spaced-out rather than merely uppercase.
+  static final TextStyle microLabel = GoogleFonts.interTight(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.55,
+    color: AppColors.muted,
   );
 
   static final TextStyle body = _body(fontSize: 15);
@@ -79,21 +101,28 @@ abstract final class AppTextStyles {
   static final TextStyle cardKicker = GoogleFonts.interTight(
     fontSize: 10,
     fontWeight: FontWeight.w600,
-    letterSpacing: 1.0,
+    letterSpacing: 0.5,
     color: AppColors.brand,
   );
+  /// `text-[15px] font-semibold` — the size RN's card headings actually use.
   static final TextStyle cardTitle = _heading(
-    fontSize: 17,
+    fontSize: 15,
     weight: FontWeight.w600,
     height: 1.25,
   );
-  static final TextStyle cardBody = _body(fontSize: 13, color: AppColors.muted);
+
+  /// `text-[13px] font-sans leading-5` — 20px leading on 13px copy.
+  static final TextStyle cardBody = _body(
+    fontSize: 13,
+    height: 20 / 13,
+    color: AppColors.muted,
+  );
   static final TextStyle cardMeta = _body(fontSize: 11, color: AppColors.faint);
 
   static final TextStyle tag = GoogleFonts.interTight(
     fontSize: 11,
     fontWeight: FontWeight.w600,
-    letterSpacing: 0.2,
+    letterSpacing: 0.55,
   );
 
   static final TextStyle button = GoogleFonts.interTight(

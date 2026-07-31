@@ -6,232 +6,266 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/section_header.dart';
-import '../../../core/widgets/segmented_control.dart';
+import '../../../core/widgets/app_tag.dart';
+import '../../../domain/entities/labs/biomarker.dart';
 import '../../../domain/entities/labs/lab_report.dart';
 import '../../providers/labs_providers.dart';
 import '../../widgets/labs/biomarker_table.dart';
+import 'main_shell.dart';
 
-/// A single report, in full. Ported from `app/lab/[id].tsx`.
+/// A single report, grouped by panel. Mirrors `app/lab/[id].tsx`.
 ///
-/// Defaults to the flagged view rather than the whole panel: eighteen rows of
-/// mostly-optimal results buries the three that matter. The full panel is one tap
-/// away, because it is still the user's own data and hiding it would be wrong.
-class LabReportScreen extends ConsumerStatefulWidget {
+/// Categories are ordered so the panels people act on most sit at the top, and
+/// within each, the worst flag first — a report read top-to-bottom should reach
+/// the thing that matters before the reader loses interest.
+class LabReportScreen extends ConsumerWidget {
   const LabReportScreen({super.key, required this.reportId});
 
   final String reportId;
 
-  @override
-  ConsumerState<LabReportScreen> createState() => _LabReportScreenState();
-}
-
-class _LabReportScreenState extends ConsumerState<LabReportScreen> {
-  bool _flaggedOnly = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final report = ref
-        .watch(labsProvider)
-        .reports
-        .where((r) => r.id == widget.reportId)
-        .firstOrNull;
-
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      appBar: AppBar(
-        backgroundColor: AppColors.canvas,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          report?.panelName ?? 'Report',
-          style: AppTextStyles.h5,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-      body: report == null
-          // Reachable if the report is deleted while this screen is open.
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.space6),
-                child: Text(
-                  'This report is no longer on your device.',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.cardBody,
-                ),
-              ),
-            )
-          : _Body(
-              report: report,
-              flaggedOnly: _flaggedOnly,
-              onToggle: (value) => setState(() => _flaggedOnly = value),
-            ),
-    );
-  }
-}
-
-class _Body extends ConsumerWidget {
-  const _Body({
-    required this.report,
-    required this.flaggedOnly,
-    required this.onToggle,
-  });
-
-  final LabReport report;
-  final bool flaggedOnly;
-  final ValueChanged<bool> onToggle;
+  /// Ordered by how often a finding here changes what someone does.
+  static const _categoryOrder = [
+    BiomarkerCategory.iron,
+    BiomarkerCategory.inflammation,
+    BiomarkerCategory.glycemic,
+    BiomarkerCategory.lipids,
+    BiomarkerCategory.thyroid,
+    BiomarkerCategory.micronutrient,
+    BiomarkerCategory.endocrine,
+    BiomarkerCategory.organ,
+    BiomarkerCategory.hematology,
+    BiomarkerCategory.other,
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final report = ref
+        .watch(labsProvider)
+        .reports
+        .where((r) => r.id == reportId)
+        .firstOrNull;
+
+    // The report can vanish underneath this screen if it is deleted elsewhere.
+    if (report == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space6),
+          child: Text(
+            'This report is no longer on your device.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.cardBody,
+          ),
+        ),
+      );
+    }
+
+    final grouped = <BiomarkerCategory, List<Biomarker>>{};
+    for (final biomarker in report.biomarkers) {
+      grouped.putIfAbsent(biomarker.category, () => []).add(biomarker);
+    }
+    for (final bucket in grouped.values) {
+      bucket.sort((a, b) => b.flag.severity.compareTo(a.flag.severity));
+    }
+
+    final sections = _categoryOrder
+        .where(grouped.containsKey)
+        .map((category) => (category: category, rows: grouped[category]!))
+        .toList();
+
+    final flaggedCount = report.flagged.length;
     final date = report.collectedAt ?? report.uploadedAt;
-    final flagged = report.flagged.length;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space5,
-        0,
-        AppSpacing.space5,
-        AppSpacing.space8,
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.space6,
+        AppSpacing.space6,
+        AppSpacing.space6,
+        MainShell.bottomInsetFor(context),
       ),
       children: [
-        Text(
-          '${DateFormat('d MMMM yyyy').format(date)}'
-          '${report.collectedAt == null ? ' (uploaded)' : ' (collected)'}',
-          style: AppTextStyles.muted.copyWith(fontSize: 13),
-        ),
-        if (report.labName != null)
-          Text(report.labName!, style: AppTextStyles.cardMeta),
-
-        const SizedBox(height: AppSpacing.space4),
-
         Row(
-          spacing: AppSpacing.space3,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Stat(
-              value: '${report.biomarkers.length}',
-              label: 'markers read',
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.space4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      report.panelName ?? report.fileName ?? 'Lab report',
+                      style: AppTextStyles.h3.copyWith(
+                        fontSize: 24,
+                        height: 1.17,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${report.labName != null ? '${report.labName} · ' : ''}'
+                      '${report.collectedAt != null ? 'Collected' : 'Uploaded'} '
+                      '${DateFormat('d MMMM yyyy').format(date)}',
+                      style: AppTextStyles.cardBody,
+                    ),
+                  ],
+                ),
+              ),
             ),
-            _Stat(value: '$flagged', label: 'to watch'),
-            _Stat(
-              value: '${(report.overallConfidence * 100).round()}%',
-              label: 'confidence',
+            AppButton.icon(
+              leading: const Icon(Icons.close, size: 16),
+              onPressed: () => Navigator.of(context).maybePop(),
             ),
           ],
         ),
 
-        // Every parser warning, verbatim — including the standing disclosure
-        // that no OCR service is configured in this build.
-        for (final warning in report.warnings)
+        const SizedBox(height: AppSpacing.space4),
+        Wrap(
+          spacing: AppSpacing.space2,
+          runSpacing: AppSpacing.space2,
+          children: [
+            AppTag(
+              label: '${report.biomarkers.length} markers',
+              variant: AppTagVariant.neutral,
+            ),
+            if (flaggedCount > 0)
+              AppTag(
+                label: '$flaggedCount outside optimal',
+                variant: AppTagVariant.accent,
+              ),
+            if (report.status == ParseStatus.needsReview)
+              const AppTag(
+                label: 'Needs review',
+                variant: AppTagVariant.accent,
+              ),
+          ],
+        ),
+
+        if (report.status == ParseStatus.needsReview)
           Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.space3),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.space3),
-              decoration: BoxDecoration(
-                color: AppColors.neutral200,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: AppSpacing.space2,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 2),
-                    child: Icon(
-                      Icons.info_outline,
-                      size: 13,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      warning,
-                      style: AppTextStyles.cardBody.copyWith(height: 1.45),
-                    ),
-                  ),
-                ],
-              ),
+            padding: const EdgeInsets.only(top: AppSpacing.space4),
+            child: _Notice(
+              text: 'Some values were extracted with low confidence. Check '
+                  'anything marked below against the original document before '
+                  'acting on it — a mis-read decimal point is the difference '
+                  'between normal and critical.',
             ),
           ),
 
-        const SizedBox(height: AppSpacing.space5),
+        // Parser warnings, verbatim — including the standing disclosure that no
+        // OCR service is configured in this build.
+        for (final warning in report.warnings)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.space3),
+            child: _Notice(text: warning),
+          ),
 
-        SegmentedControl<bool>(
-          options: [
-            SegmentedOption(value: true, label: 'To watch ($flagged)'),
-            SegmentedOption(
-              value: false,
-              label: 'All ${report.biomarkers.length}',
+        const SizedBox(height: AppSpacing.space2),
+
+        for (final section in sections) ...[
+          Padding(
+            padding: const EdgeInsets.only(
+              top: AppSpacing.space4,
+              bottom: AppSpacing.space2,
             ),
-          ],
-          selected: flaggedOnly,
-          onChanged: onToggle,
-        ),
+            child: Text(
+              section.category.label.toUpperCase(),
+              style: AppTextStyles.tag.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.55,
+                color: AppColors.muted,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (final biomarker in section.rows)
+                  BiomarkerRow(
+                    biomarker: biomarker,
+                    isLast: biomarker == section.rows.last,
+                  ),
+              ],
+            ),
+          ),
+        ],
 
-        const SizedBox(height: AppSpacing.space4),
-        BiomarkerTable(report: report, flaggedOnly: flaggedOnly),
-
-        const SizedBox(height: AppSpacing.space6),
-        const SectionHeader(title: 'How to read this'),
-        Text(
-          'The reference interval is your lab’s own, where the report printed '
-          'one. The optimal band is narrower and comes from published '
-          'literature — a value can sit inside the first and outside the '
-          'second, which is exactly the case worth acting on.',
-          style: AppTextStyles.cardBody.copyWith(height: 1.5),
+        const SizedBox(height: AppSpacing.space8),
+        Center(
+          child: AppButton(
+            label: 'Delete report',
+            variant: AppButtonVariant.danger,
+            leading: const Icon(Icons.delete_outline, size: 15),
+            onPressed: () => _confirmDelete(context, ref, report),
+          ),
         ),
 
         const SizedBox(height: AppSpacing.space5),
-        AppButton(
-          label: 'Delete this report',
-          variant: AppButtonVariant.danger,
-          block: true,
-          onPressed: () async {
-            await ref.read(labsProvider.notifier).remove(report.id);
-            if (context.mounted) Navigator.of(context).pop();
-          },
-        ),
-
-        const SizedBox(height: AppSpacing.space4),
         Text(
-          'Reference intervals are population defaults, not a diagnosis. '
-          'Discuss anything flagged here with a clinician.',
+          'Reference intervals shown are the lab’s own where printed, with an '
+          'evidence-based optimal band layered on top. Neither replaces '
+          'clinical interpretation.',
           textAlign: TextAlign.center,
-          style: AppTextStyles.cardMeta.copyWith(fontSize: 10, height: 1.5),
+          style: AppTextStyles.cardMeta.copyWith(fontSize: 11, height: 1.4),
         ),
       ],
     );
   }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    LabReport report,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this report?'),
+        content: const Text(
+          'The extracted values and the stored file are removed from this '
+          'device.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await ref.read(labsProvider.notifier).remove(report.id);
+    if (context.mounted) Navigator.of(context).maybePop();
+  }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label});
+class _Notice extends StatelessWidget {
+  const _Notice({required this.text});
 
-  final String value;
-  final String label;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space3,
-          vertical: AppSpacing.space3,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border.all(color: AppColors.hairline),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: AppTextStyles.metricSmall.copyWith(fontSize: 18),
-            ),
-            Text(label, style: AppTextStyles.cardMeta.copyWith(fontSize: 10)),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.space4),
+      decoration: BoxDecoration(
+        color: AppColors.ink.withValues(alpha: 0.04),
+        border: Border.all(color: AppColors.hairline),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Text(
+        text,
+        style: AppTextStyles.cardBody.copyWith(fontSize: 13, height: 1.46),
       ),
     );
   }

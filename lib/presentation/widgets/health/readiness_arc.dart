@@ -71,7 +71,7 @@ class ReadinessArc extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: AppTextStyles.tag.copyWith(
                         fontSize: 9,
-                        letterSpacing: 0.9,
+                        letterSpacing: 0.5,
                         color: AppColors.onBrand.withValues(alpha: 0.45),
                       ),
                     ),
