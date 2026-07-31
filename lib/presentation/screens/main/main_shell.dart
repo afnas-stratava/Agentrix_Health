@@ -309,8 +309,12 @@ class _TabSlot extends StatelessWidget {
                 opacity: active ? 1 : 0,
                 duration: _transition,
                 curve: Curves.easeOut,
+                // Fixed height, not just fixed presence: `scaleDown` shrinks a
+                // label that is wider than its slot, and a shorter box would
+                // then pull that slot's icon a pixel out of line with the rest.
                 child: SizedBox(
                   width: double.infinity,
+                  height: 12,
                   // Scales down rather than ellipsising, so a long label still
                   // reads in full on a narrow phone.
                   child: FittedBox(

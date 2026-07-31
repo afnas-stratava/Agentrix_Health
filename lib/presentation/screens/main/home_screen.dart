@@ -432,14 +432,21 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Both halves flex: a long locale date plus "synced just now"
+                // at a large text scale overflows this row otherwise, and the
+                // date is the half worth keeping whole.
                 Row(
                   spacing: 6,
                   children: [
-                    Text(
-                      date,
-                      style: AppTextStyles.cardMeta.copyWith(
-                        fontSize: 11,
-                        color: AppColors.muted,
+                    Flexible(
+                      child: Text(
+                        date,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.cardMeta.copyWith(
+                          fontSize: 11,
+                          color: AppColors.muted,
+                        ),
                       ),
                     ),
                     if (synced != null) ...[
@@ -451,9 +458,13 @@ class _Header extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                       ),
-                      Text(
-                        synced!,
-                        style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
+                      Flexible(
+                        child: Text(
+                          synced!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
+                        ),
                       ),
                     ],
                   ],

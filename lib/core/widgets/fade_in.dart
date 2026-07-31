@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// Mirrors `src/components/ui/FadeIn.tsx` — a short fade plus a few pixels of
@@ -32,20 +34,25 @@ class _FadeInState extends State<FadeIn> with SingleTickerProviderStateMixin {
     curve: Curves.easeOutCubic,
   );
 
+  /// Held so it can be cancelled: a bare `Future.delayed` outlives a widget
+  /// that is disposed before it fires, which leaves a pending timer behind
+  /// every scrolled-away section — and fails any widget test that checks for
+  /// them at teardown.
+  Timer? _delayTimer;
+
   @override
   void initState() {
     super.initState();
     if (widget.delay == Duration.zero) {
       _controller.forward();
     } else {
-      Future<void>.delayed(widget.delay, () {
-        if (mounted) _controller.forward();
-      });
+      _delayTimer = Timer(widget.delay, _controller.forward);
     }
   }
 
   @override
   void dispose() {
+    _delayTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
