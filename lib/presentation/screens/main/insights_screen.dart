@@ -54,7 +54,7 @@ class InsightsScreen extends ConsumerWidget {
         ),
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space6),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: AppSpacing.space3,
@@ -91,9 +91,9 @@ class InsightsScreen extends ConsumerWidget {
           if (urgentCount > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space6,
+                AppSpacing.space5,
                 AppSpacing.space4,
-                AppSpacing.space6,
+                AppSpacing.space5,
                 0,
               ),
               child: _UrgentBanner(count: urgentCount),
@@ -101,9 +101,9 @@ class InsightsScreen extends ConsumerWidget {
 
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space6,
               AppSpacing.space5,
-              AppSpacing.space6,
+              AppSpacing.space5,
+              AppSpacing.space5,
               0,
             ),
             child: loading && insights.isEmpty
@@ -141,9 +141,9 @@ class InsightsScreen extends ConsumerWidget {
           if (dismissed.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space6,
+                AppSpacing.space5,
                 AppSpacing.space4,
-                AppSpacing.space6,
+                AppSpacing.space5,
                 0,
               ),
               child: AppButton(

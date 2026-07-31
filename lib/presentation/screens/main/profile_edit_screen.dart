@@ -7,11 +7,13 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/util/iso_day.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/choice.dart' as choice;
 import '../../../core/widgets/screen_back_button.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../domain/entities/allergy.dart';
 import '../../../domain/entities/cuisine_preference.dart';
+import '../../../domain/entities/gender.dart';
 import '../../../domain/entities/health_goal.dart';
 import '../../../domain/entities/profile/cycle_profile.dart';
 import '../../../domain/entities/profile/diet_pattern.dart';
@@ -64,10 +66,57 @@ class ProfileEditScreen extends ConsumerWidget {
           ),
         ),
 
+        // ABOUT YOU — the two fields onboarding never asks for.
+        //
+        // Gender is not cosmetic: it selects the Mifflin-St Jeor constant, the
+        // added-sugar cap and the calorie floor in `targets.dart`. With no way
+        // to set it, every profile kept `UserProfile.initial()`'s default and
+        // every target was computed as female.
+        _Group(
+          title: 'About you',
+          topGap: AppSpacing.space5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.space4),
+                child: AppTextField(
+                  label: 'Name',
+                  value: profile.name,
+                  placeholder: 'What should we call you?',
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.givenName],
+                  helperText: 'Used to greet you on the Today screen.',
+                  onChanged: notifier.setName,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Text('Gender', style: AppTextStyles.fieldLabel),
+              ),
+              for (final gender in Gender.values)
+                choice.ChoiceRow(
+                  label: gender.label,
+                  selected: profile.gender == gender,
+                  onTap: () => notifier.setGender(gender),
+                ),
+              Text(
+                'Used only for your calorie and macro maths. Which lab '
+                'reference intervals we apply is a separate setting, asked '
+                'during setup.',
+                style: AppTextStyles.cardMeta.copyWith(
+                  fontSize: 12,
+                  height: 1.42,
+                ),
+              ),
+            ],
+          ),
+        ),
+
         // BODY
         _Group(
           title: 'Body',
-          topGap: AppSpacing.space5,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -197,14 +246,20 @@ class ProfileEditScreen extends ConsumerWidget {
         // RESTRICTIONS
         _Group(
           title: 'Preferences',
-          child: choice.ChipGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final restriction in Restriction.values)
-                choice.ChoiceChip(
-                  label: restriction.label,
-                  selected: profile.restrictions.contains(restriction),
-                  onTap: () => notifier.toggleRestriction(restriction),
-                ),
+              choice.ChipGroup(
+                children: [
+                  for (final restriction in Restriction.values)
+                    choice.ChoiceChip(
+                      label: restriction.label,
+                      selected: profile.restrictions.contains(restriction),
+                      onTap: () => notifier.toggleRestriction(restriction),
+                    ),
+                ],
+              ),
+              const _CustomRestrictions(),
             ],
           ),
         ),
@@ -232,6 +287,95 @@ class ProfileEditScreen extends ConsumerWidget {
 
         // CYCLE
         const _Group(title: 'Menstrual cycle', child: _CycleCard()),
+      ],
+    );
+  }
+}
+
+/// Free-text dietary notes, sitting under the preset [Restriction] chips.
+///
+/// The notifier has always carried `addCustomRestriction` /
+/// `removeCustomRestriction`, but nothing called them — so anything a user
+/// could not express with a preset chip had nowhere to go. Existing notes are
+/// chips that clear on tap, which is the gesture every other chip on this
+/// screen already uses.
+class _CustomRestrictions extends ConsumerStatefulWidget {
+  const _CustomRestrictions();
+
+  @override
+  ConsumerState<_CustomRestrictions> createState() =>
+      _CustomRestrictionsState();
+}
+
+class _CustomRestrictionsState extends ConsumerState<_CustomRestrictions> {
+  String _draft = '';
+
+  void _add() {
+    if (_draft.trim().isEmpty) return;
+    ref.read(userProfileProvider.notifier).addCustomRestriction(_draft);
+    // Clearing the draft also clears the field: AppTextField re-syncs its
+    // controller whenever the value it is handed stops matching.
+    setState(() => _draft = '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final custom = ref.watch(userProfileProvider).customRestrictions;
+    final canAdd = _draft.trim().isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (custom.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.space3),
+            child: choice.ChipGroup(
+              children: [
+                for (final restriction in custom)
+                  choice.ChoiceChip(
+                    label: restriction,
+                    selected: true,
+                    onTap: () => ref
+                        .read(userProfileProvider.notifier)
+                        .removeCustomRestriction(restriction),
+                  ),
+              ],
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.space4),
+          child: AppTextField(
+            label: 'Anything else',
+            value: _draft,
+            placeholder: 'e.g. no raw fish',
+            textCapitalization: TextCapitalization.sentences,
+            textInputAction: TextInputAction.done,
+            onChanged: (value) => setState(() => _draft = value),
+            onSubmitted: (_) => _add(),
+            helperText: custom.isEmpty
+                ? 'Added to the recommendation filters alongside the chips '
+                      'above.'
+                : 'Tap a note above to remove it.',
+            suffix: canAdd
+                ? Semantics(
+                    button: true,
+                    label: 'Add restriction',
+                    child: InkWell(
+                      onTap: _add,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: AppSpacing.space2),
+                        child: Icon(
+                          Icons.add_circle,
+                          size: 22,
+                          color: AppColors.brand,
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+        ),
       ],
     );
   }

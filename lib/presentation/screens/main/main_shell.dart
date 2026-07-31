@@ -100,7 +100,15 @@ class _PushedRoute extends StatelessWidget {
       light: false,
       child: ColoredBox(
         color: AppColors.canvas,
-        child: SafeArea(bottom: false, child: child),
+        // A pushed route builds outside the shell's own Material, and without
+        // one in scope `WidgetsApp` falls back to its error text style — every
+        // heading and paragraph on Upload, Gmail import, the metric detail and
+        // the rest rendered yellow and underlined, and ink ripples had no
+        // surface to paint on. Transparency keeps the canvas behind it.
+        child: Material(
+          type: MaterialType.transparency,
+          child: SafeArea(bottom: false, child: child),
+        ),
       ),
     );
   }

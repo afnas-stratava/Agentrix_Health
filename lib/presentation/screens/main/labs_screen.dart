@@ -14,7 +14,7 @@ import '../../../domain/entities/labs/biomarker.dart';
 import '../../../domain/entities/labs/lab_report.dart';
 import '../../providers/insights_providers.dart';
 import '../../providers/labs_providers.dart';
-import '../../widgets/labs/biomarker_table.dart';
+import '../../widgets/labs/biomarker_range_row.dart';
 import 'gmail_import_screen.dart';
 import 'lab_report_screen.dart';
 import 'main_shell.dart';
@@ -31,10 +31,12 @@ class LabsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reports = ref.watch(labsProvider).reports;
-    final flagged = ref.watch(mergedBiomarkersProvider)
-        .where((b) => b.flag.needsAttention)
-        .toList()
-      ..sort((a, b) => b.flag.severity.compareTo(a.flag.severity));
+    final flagged =
+        ref
+            .watch(mergedBiomarkersProvider)
+            .where((b) => b.flag.needsAttention)
+            .toList()
+          ..sort((a, b) => b.flag.severity.compareTo(a.flag.severity));
 
     return ListView(
       padding: EdgeInsets.only(
@@ -107,9 +109,7 @@ class LabsScreen extends ConsumerWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space6,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space6),
             child: _FlaggedCard(flagged: flagged),
           ),
         ],
@@ -142,7 +142,8 @@ class LabsScreen extends ConsumerWidget {
                 EmptyState(
                   icon: Icons.science_outlined,
                   title: 'No blood work yet',
-                  body: 'Connect Gmail and we will find the lab reports already '
+                  body:
+                      'Connect Gmail and we will find the lab reports already '
                       'sitting in your inbox — or add one manually. Either way '
                       'we extract every biomarker and line it up against your '
                       'daily telemetry.',
@@ -154,8 +155,7 @@ class LabsScreen extends ConsumerWidget {
                 Column(
                   spacing: AppSpacing.space3,
                   children: [
-                    for (final report in reports)
-                      _ReportCard(report: report),
+                    for (final report in reports) _ReportCard(report: report),
                   ],
                 ),
 
@@ -197,86 +197,10 @@ class _FlaggedCard extends StatelessWidget {
       child: Column(
         children: [
           for (final biomarker in flagged)
-            _FlaggedRow(
+            BiomarkerRangeRow(
               biomarker: biomarker,
               isLast: biomarker == flagged.last,
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FlaggedRow extends StatelessWidget {
-  const _FlaggedRow({required this.biomarker, required this.isLast});
-
-  final Biomarker biomarker;
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) {
-    final colour = flagColour(biomarker.flag);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space4,
-        vertical: AppSpacing.space3,
-      ),
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : const Border(
-                bottom: BorderSide(color: AppColors.hairline, width: 1),
-              ),
-      ),
-      child: Row(
-        spacing: AppSpacing.space3,
-        children: [
-          Container(
-            width: 3,
-            height: 28,
-            decoration: BoxDecoration(
-              color: colour,
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  biomarker.displayName,
-                  style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
-                ),
-                Text(
-                  biomarker.range.source == ReferenceSource.lab
-                      ? 'Against your lab’s own interval'
-                      : 'Against our reference interval',
-                  style: AppTextStyles.cardMeta.copyWith(fontSize: 10),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                biomarker.valueWithUnit,
-                style: AppTextStyles.h6.copyWith(
-                  fontSize: 13,
-                  letterSpacing: 0,
-                ),
-              ),
-              Text(
-                biomarker.flag.label,
-                style: AppTextStyles.cardMeta.copyWith(
-                  fontSize: 10,
-                  color: colour,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -303,7 +227,8 @@ class _ReportCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: PressableScale(
         scaleTo: 0.99,
-        semanticLabel: '${report.panelName ?? 'Blood panel'}, '
+        semanticLabel:
+            '${report.panelName ?? 'Blood panel'}, '
             '${DateFormat('d MMMM yyyy').format(date)}',
         semanticHint: 'Opens the full report',
         onTap: () =>
@@ -346,11 +271,7 @@ class _ReportCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                size: 15,
-                color: AppColors.faint,
-              ),
+              const Icon(Icons.chevron_right, size: 15, color: AppColors.faint),
             ],
           ),
         ),
