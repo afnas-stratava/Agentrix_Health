@@ -58,6 +58,14 @@ class AppButton extends StatelessWidget {
     AppButtonSize.lg => 56,
   };
 
+  /// Circular icon buttons, per the design reference's shape table: header
+  /// actions are 48px, and `sm` stays 40 for the denser in-card affordances.
+  double get _iconOnlyDiameter => switch (size) {
+    AppButtonSize.sm => 40,
+    AppButtonSize.md => 48,
+    AppButtonSize.lg => 56,
+  };
+
   double get _paddingX => switch (size) {
     AppButtonSize.sm => 14,
     AppButtonSize.md => 20,
@@ -127,8 +135,8 @@ class AppButton extends StatelessWidget {
           onTap: onPressed,
           borderRadius: radius,
           child: Container(
-            width: _iconOnly ? 40 : null,
-            height: _iconOnly ? 40 : _height,
+            width: _iconOnly ? _iconOnlyDiameter : null,
+            height: _iconOnly ? _iconOnlyDiameter : _height,
             padding: _iconOnly
                 ? null
                 : EdgeInsets.symmetric(horizontal: _paddingX),

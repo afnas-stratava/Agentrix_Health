@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/stats/stats.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/app_tag.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/screen_back_button.dart';
 import '../../../core/widgets/skeleton.dart';
+import '../../../domain/entities/health/metric_key.dart';
 import '../../../domain/entities/insights/correlation.dart';
 import '../../../domain/entities/insights/insight.dart';
-import '../../../features/correlation/engine.dart';
 import '../../providers/health_providers.dart';
 import '../../providers/insights_providers.dart';
 import '../../providers/settings_providers.dart';
@@ -21,7 +19,8 @@ import '../../widgets/labs/biomarker_table.dart';
 import 'main_shell.dart';
 import 'upload_screen.dart';
 
-/// Findings from the correlation engine. Mirrors `app/(tabs)/insights.tsx`.
+/// Findings from the correlation engine. Mirrors `app/(tabs)/insights.tsx` and
+/// `src/components/insights/InsightCard.tsx` one-for-one.
 ///
 /// A flat, ranked list — severity then score — rather than any grouping of our
 /// own. The engine already decided the order, and a second organising principle
@@ -73,7 +72,7 @@ class InsightsScreen extends ConsumerWidget {
                                   'agree. Nothing here is a diagnosis.'
                             : 'Patterns found in your telemetry. Add a blood '
                                   'report to unlock the correlations.',
-                        style: AppTextStyles.cardBody.copyWith(height: 1.5),
+                        style: AppTextStyles.cardBody.copyWith(height: 20 / 13),
                       ),
                     ],
                   ),
@@ -110,7 +109,7 @@ class InsightsScreen extends ConsumerWidget {
             child: loading && insights.isEmpty
                 ? const Column(
                     spacing: AppSpacing.space3,
-                    children: [Skeleton(height: 168), Skeleton(height: 168)],
+                    children: [_InsightCardSkeleton(), _InsightCardSkeleton()],
                   )
                 : insights.isEmpty
                 ? EmptyState(
@@ -134,7 +133,7 @@ class InsightsScreen extends ConsumerWidget {
                     spacing: AppSpacing.space3,
                     children: [
                       for (final insight in insights)
-                        _InsightCard(insight: insight),
+                        InsightCard(insight: insight),
                     ],
                   ),
           ),
@@ -172,8 +171,8 @@ class InsightsScreen extends ConsumerWidget {
                 'with a clinician.',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.cardMeta.copyWith(
-                  fontSize: 11,
-                  height: 1.45,
+                  height: 16 / 11,
+                  color: AppColors.faint.withValues(alpha: 0.8),
                 ),
               ),
             ),
@@ -219,7 +218,7 @@ class _UrgentBanner extends StatelessWidget {
                   : '$count findings are worth taking to a clinician.',
               style: AppTextStyles.cardBody.copyWith(
                 fontSize: 12,
-                height: 1.4,
+                height: 16 / 12,
                 color: AppColors.ink.withValues(alpha: 0.8),
               ),
             ),
@@ -230,97 +229,236 @@ class _UrgentBanner extends StatelessWidget {
   }
 }
 
-/// One finding, expandable into its evidence and suggested actions, dismissable
-/// from its own header.
-class _InsightCard extends ConsumerStatefulWidget {
-  const _InsightCard({required this.insight});
+/// One finding: severity rail, domain glyph, badge, headline, evidence, and the
+/// suggestions behind a disclosure.
+///
+/// Only the disclosure row toggles — the card body is not a tap target, so
+/// selecting the summary text or a citation never collapses what you are
+/// reading.
+class InsightCard extends ConsumerStatefulWidget {
+  const InsightCard({
+    super.key,
+    required this.insight,
+    this.dismissible = true,
+    this.defaultExpanded = false,
+  });
 
   final Insight insight;
 
+  final bool dismissible;
+
+  /// Expanded by default in a detail view, collapsed in feeds.
+  final bool defaultExpanded;
+
   @override
-  ConsumerState<_InsightCard> createState() => _InsightCardState();
+  ConsumerState<InsightCard> createState() => _InsightCardState();
 }
 
-class _InsightCardState extends ConsumerState<_InsightCard> {
-  bool _expanded = false;
+class _InsightCardState extends ConsumerState<InsightCard> {
+  late bool _expanded = widget.defaultExpanded;
 
-  static Color _severityColour(InsightSeverity severity) => switch (severity) {
-    InsightSeverity.urgent => AppColors.critical,
-    InsightSeverity.action => AppColors.abnormal,
-    InsightSeverity.watch => AppColors.borderline,
-    InsightSeverity.info => AppColors.normal,
+  static const Map<InsightDomain, IconData> _domainIcon = {
+    InsightDomain.nutrition: Icons.restaurant_outlined,
+    InsightDomain.training: Icons.fitness_center,
+    InsightDomain.sleep: Icons.bed_outlined,
+    InsightDomain.recovery: Icons.monitor_heart_outlined,
+    InsightDomain.stress: Icons.show_chart,
+    InsightDomain.medicalReferral: Icons.medical_services_outlined,
   };
 
   @override
   Widget build(BuildContext context) {
     final insight = widget.insight;
-    final colour = _severityColour(insight.severity);
+    final severityColour = insight.severity.color;
+    final evidence = insight.evidence;
 
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border.all(color: AppColors.hairline),
         borderRadius: BorderRadius.circular(AppRadius.card),
-        boxShadow: AppShadows.sm,
       ),
-      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Severity as a bar rather than a tinted card: a full red panel on a
-          // health finding reads as alarm, and the strongest thing this screen
-          // can say is "take this to a clinician".
-          Container(height: 3, color: colour),
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.space4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    spacing: AppSpacing.space2,
-                    children: [
-                      Text(
-                        insight.severity.label.toUpperCase(),
-                        style: AppTextStyles.tag.copyWith(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1,
-                          color: colour,
-                        ),
+          // Severity rail — a colour cue that survives greyscale accessibility
+          // modes because it is paired with the text badge below.
+          Container(height: 4, width: double.infinity, color: severityColour),
+
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: AppSpacing.space3,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.ink.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      AppTag(
-                        label: insight.domain.label,
-                        variant: AppTagVariant.neutral,
+                      child: Icon(
+                        _domainIcon[insight.domain],
+                        size: 19,
+                        color: AppColors.ink,
                       ),
-                      const Spacer(),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _Badge(
+                            label: insight.severity.label,
+                            colour: severityColour,
+                          ),
+                          const SizedBox(height: AppSpacing.space2),
+                          Text(
+                            insight.title,
+                            style: AppTextStyles.h5.copyWith(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              height: 24 / 17,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (widget.dismissible)
                       _DismissButton(insight: insight),
-                      Icon(
-                        _expanded ? Icons.expand_less : Icons.expand_more,
-                        size: 18,
-                        color: AppColors.faint,
+                  ],
+                ),
+
+                const SizedBox(height: AppSpacing.space3),
+                Text(
+                  insight.summary,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    height: 21 / 14,
+                    color: AppColors.ink.withValues(alpha: 0.7),
+                  ),
+                ),
+
+                // Evidence chips: the biomarkers that fired the rule.
+                if (evidence.biomarkers.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.space4),
+                    child: Wrap(
+                      spacing: AppSpacing.space2,
+                      runSpacing: AppSpacing.space2,
+                      children: [
+                        for (final biomarker in evidence.biomarkers)
+                          _BiomarkerChip(biomarker: biomarker),
+                      ],
+                    ),
+                  ),
+
+                if (evidence.telemetryNote != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.space3),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space3,
+                        vertical: 10,
                       ),
-                    ],
+                      decoration: BoxDecoration(
+                        color: AppColors.ink.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        spacing: AppSpacing.space2,
+                        children: [
+                          const Icon(
+                            Icons.show_chart,
+                            size: 14,
+                            color: AppColors.faint,
+                          ),
+                          Expanded(
+                            child: Text(
+                              evidence.telemetryNote!,
+                              style: AppTextStyles.cardBody.copyWith(
+                                fontSize: 12,
+                                height: 16 / 12,
+                                color: AppColors.ink.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: AppSpacing.space2),
-                  Text(
-                    insight.title,
-                    style: AppTextStyles.h5.copyWith(height: 1.3),
+
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.space4),
+                  child: Semantics(
+                    button: true,
+                    label: _expanded ? 'Hide details' : 'Show what to do',
+                    child: InkWell(
+                      onTap: () => setState(() => _expanded = !_expanded),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: 6,
+                        children: [
+                          Text(
+                            _expanded
+                                ? 'Hide details'
+                                : 'What to do (${insight.suggestions.length})',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Icon(
+                            _expanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.ink,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    insight.summary,
-                    maxLines: _expanded ? null : 3,
-                    overflow: _expanded ? null : TextOverflow.ellipsis,
-                    style: AppTextStyles.cardBody.copyWith(height: 1.5),
-                  ),
-                ],
-              ),
+                ),
+
+                if (_expanded) _Detail(insight: insight),
+              ],
             ),
           ),
-          if (_expanded) _Detail(insight: insight),
         ],
+      ),
+    );
+  }
+}
+
+/// `self-start` pill whose fill and border are both derived from one colour.
+class _Badge extends StatelessWidget {
+  const _Badge({required this.label, required this.colour});
+
+  final String label;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2, vertical: 2),
+      decoration: BoxDecoration(
+        // `${color}22` over `${color}55` in the React Native original.
+        color: colour.withValues(alpha: 0.13),
+        border: Border.all(color: colour.withValues(alpha: 0.33)),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.tag.copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0,
+          color: colour,
+        ),
       ),
     );
   }
@@ -335,20 +473,28 @@ class _DismissButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Semantics(
       button: true,
-      label: 'Dismiss this finding',
+      label: 'Dismiss insight',
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        customBorder: const CircleBorder(),
         onTap: () =>
             ref.read(settingsProvider.notifier).dismissInsight(insight.id),
-        child: const Padding(
-          padding: EdgeInsets.all(4),
-          child: Icon(Icons.close, size: 15, color: AppColors.faint),
+        child: Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.ink.withValues(alpha: 0.08),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.close, size: 13, color: AppColors.ink),
         ),
       ),
     );
   }
 }
 
+/// Everything behind the disclosure: the suggestions, then the evidence for
+/// them — what was found in the user's own data, and what it rests on.
 class _Detail extends StatelessWidget {
   const _Detail({required this.insight});
 
@@ -357,92 +503,97 @@ class _Detail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final evidence = insight.evidence;
+    final suggestions = insight.suggestionsByEffort;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.space4),
-      decoration: const BoxDecoration(
-        color: AppColors.canvas,
-        border: Border(top: BorderSide(color: AppColors.hairline)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _MicroLabel('Evidence'),
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.space3),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: AppColors.ink.withValues(alpha: 0.1)),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < suggestions.length; i += 1)
+                _SuggestionRow(
+                  suggestion: suggestions[i],
+                  isLast: i == suggestions.length - 1,
+                ),
 
-          if (evidence.biomarkers.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.space2),
-              child: Wrap(
-                spacing: AppSpacing.space2,
-                runSpacing: AppSpacing.space2,
-                children: [
-                  for (final biomarker in evidence.biomarkers)
-                    _BiomarkerChip(biomarker: biomarker),
-                ],
-              ),
-            ),
-
-          if (evidence.telemetryNote != null)
-            _EvidenceRow(
-              icon: Icons.monitor_heart_outlined,
-              text: evidence.telemetryNote!,
-            ),
-
-          for (final correlation in evidence.correlations)
-            _EvidenceRow(
-              icon: Icons.show_chart,
-              text: describeCorrelation(correlation),
-              // A non-significant link never reaches here, but if one ever did
-              // it must not read as a finding.
-              muted: correlation.strength == CorrelationStrength.none,
-            ),
-
-          const SizedBox(height: AppSpacing.space4),
-          const _MicroLabel('What to do'),
-          for (final suggestion in insight.suggestionsByEffort)
-            _SuggestionRow(suggestion: suggestion),
-
-          if (evidence.citations.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.space4),
-            const _MicroLabel('Reference'),
-            for (final citation in evidence.citations)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: Text(
-                  citation.label,
-                  style: AppTextStyles.cardMeta.copyWith(
-                    fontSize: 11,
-                    color: AppColors.brand600,
+              if (evidence.correlations.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.space3),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.space3),
+                    decoration: BoxDecoration(
+                      color: AppColors.ink.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'FOUND IN YOUR OWN DATA',
+                          style: AppTextStyles.tag.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1,
+                            color: AppColors.ink.withValues(alpha: 0.45),
+                          ),
+                        ),
+                        for (final correlation in evidence.correlations)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              _describeCorrelation(correlation),
+                              style: AppTextStyles.cardBody.copyWith(
+                                fontSize: 12,
+                                height: 16 / 12,
+                                color: AppColors.ink.withValues(alpha: 0.65),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
-class _MicroLabel extends StatelessWidget {
-  const _MicroLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.space2),
-      child: Text(
-        label.toUpperCase(),
-        style: AppTextStyles.tag.copyWith(
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1,
-          color: AppColors.muted,
+              if (evidence.citations.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.space3),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final citation in evidence.citations)
+                        _CitationLink(citation: citation),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  /// The card's own phrasing, not the engine's: here the correlation is being
+  /// offered as evidence for a claim already made above, so it leads with the
+  /// metric and ends with the coefficient.
+  static String _describeCorrelation(Correlation correlation) {
+    final direction = correlation.r > 0
+        ? 'rises and falls with'
+        : 'moves inversely to';
+    final lag = correlation.lagDays > 0
+        ? ' (${correlation.lagDays}-day lag)'
+        : '';
+    final label = metricMeta[correlation.metric]!.label;
+    return '$label $direction this pattern across ${correlation.n} days$lag '
+        '· r = ${correlation.r}';
   }
 }
 
@@ -456,71 +607,29 @@ class _BiomarkerChip extends StatelessWidget {
     final colour = flagColour(biomarker.flag);
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space2 + 2,
-        vertical: 5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border.all(color: colour.withValues(alpha: 0.4)),
+        border: Border.all(color: colour.withValues(alpha: 0.33)),
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        spacing: 5,
+        spacing: 6,
         children: [
-          Container(
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(color: colour, shape: BoxShape.circle),
+          Text(
+            biomarker.displayName,
+            style: AppTextStyles.cardMeta.copyWith(
+              color: AppColors.ink.withValues(alpha: 0.6),
+            ),
           ),
           Text(
-            '${biomarker.displayName} ${biomarker.valueWithUnit}',
-            style: AppTextStyles.cardMeta.copyWith(
+            biomarker.valueWithUnit,
+            style: AppTextStyles.tag.copyWith(
               fontSize: 11,
-              color: AppColors.ink,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EvidenceRow extends StatelessWidget {
-  const _EvidenceRow({
-    required this.icon,
-    required this.text,
-    this.muted = false,
-  });
-
-  final IconData icon;
-  final String text;
-  final bool muted;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacing.space2,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(
-              icon,
-              size: 12,
-              color: muted ? AppColors.faint : AppColors.brand,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.cardBody.copyWith(
-                height: 1.45,
-                color: muted ? AppColors.faint : AppColors.muted,
-              ),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+              color: colour,
             ),
           ),
         ],
@@ -532,48 +641,180 @@ class _EvidenceRow extends StatelessWidget {
 /// Effort and horizon are shown, not hidden: "this takes 6 weeks to move" is
 /// what stops someone abandoning it in week two.
 class _SuggestionRow extends StatelessWidget {
-  const _SuggestionRow({required this.suggestion});
+  const _SuggestionRow({required this.suggestion, required this.isLast});
 
   final Suggestion suggestion;
+  final bool isLast;
 
   static const _effortLabel = {
     SuggestionEffort.low: 'Easy',
     SuggestionEffort.medium: 'Moderate',
-    SuggestionEffort.high: 'Hard',
+    SuggestionEffort.high: 'Committed',
   };
+
+  static const _effortColour = {
+    SuggestionEffort.low: AppColors.optimal,
+    SuggestionEffort.medium: AppColors.borderline,
+    SuggestionEffort.high: AppColors.abnormal,
+  };
+
+  static String _horizonLabel(int days) {
+    if (days <= 14) return '$days days';
+    if (days <= 60) return '${(days / 7).round()} weeks';
+    return '${(days / 30).round()} months';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final weeks = (suggestion.horizonDays / 7).round();
+    final colour = _effortColour[suggestion.effort]!;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.space3),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : Border(
+                bottom: BorderSide(
+                  color: AppColors.ink.withValues(alpha: 0.08),
+                ),
+              ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            suggestion.title,
+            style: AppTextStyles.bodySmall.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            suggestion.detail,
+            style: AppTextStyles.cardBody.copyWith(
+              height: 19 / 13,
+              color: AppColors.ink.withValues(alpha: 0.65),
+            ),
+          ),
+          const SizedBox(height: 10),
           Row(
-            spacing: AppSpacing.space2,
+            spacing: AppSpacing.space4,
             children: [
-              Expanded(
-                child: Text(
-                  suggestion.title,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 6,
+                children: [
+                  Icon(Icons.speed, size: 12, color: colour),
+                  Text(
+                    _effortLabel[suggestion.effort]!,
+                    style: AppTextStyles.tag.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0,
+                      color: colour,
+                    ),
                   ),
-                ),
+                ],
               ),
-              Text(
-                '${_effortLabel[suggestion.effort]} · '
-                '${weeks <= 1 ? '1 wk' : '$weeks wks'}',
-                style: AppTextStyles.cardMeta.copyWith(fontSize: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 6,
+                children: [
+                  const Icon(
+                    Icons.schedule,
+                    size: 12,
+                    color: AppColors.faint,
+                  ),
+                  Text(
+                    'Signal in ~${_horizonLabel(suggestion.horizonDays)}',
+                    style: AppTextStyles.cardMeta.copyWith(
+                      color: AppColors.ink.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            suggestion.detail,
-            style: AppTextStyles.cardBody.copyWith(height: 1.45),
+        ],
+      ),
+    );
+  }
+}
+
+class _CitationLink extends StatelessWidget {
+  const _CitationLink({required this.citation});
+
+  final Citation citation;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Semantics(
+        link: true,
+        child: InkWell(
+          onTap: () => launchUrl(
+            Uri.parse(citation.url),
+            mode: LaunchMode.externalApplication,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 6,
+            children: [
+              const Icon(
+                Icons.open_in_new,
+                size: 12,
+                color: AppColors.faint,
+              ),
+              Flexible(
+                child: Text(
+                  citation.label,
+                  style: AppTextStyles.cardMeta.copyWith(
+                    decoration: TextDecoration.underline,
+                    color: AppColors.ink.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Holds the card's shape while the first series loads, rather than collapsing
+/// the list to a spinner.
+class _InsightCardSkeleton extends StatelessWidget {
+  const _InsightCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.ink.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Skeleton(height: 16, width: 96, radius: AppRadius.sm),
+          SizedBox(height: AppSpacing.space4),
+          Skeleton(height: 20, radius: AppRadius.sm),
+          SizedBox(height: AppSpacing.space2),
+          FractionallySizedBox(
+            widthFactor: 0.75,
+            alignment: Alignment.centerLeft,
+            child: Skeleton(height: 20, radius: AppRadius.sm),
+          ),
+          SizedBox(height: AppSpacing.space5),
+          Skeleton(height: 12, radius: AppRadius.sm),
+          SizedBox(height: AppSpacing.space2),
+          FractionallySizedBox(
+            widthFactor: 0.833,
+            alignment: Alignment.centerLeft,
+            child: Skeleton(height: 12, radius: AppRadius.sm),
           ),
         ],
       ),

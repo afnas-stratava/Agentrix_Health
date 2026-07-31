@@ -143,25 +143,29 @@ class _PillTabBar extends ConsumerWidget {
     );
 
     return Padding(
+      // Insets and height from the design reference's tab-bar spec: 16px
+      // gutters, 15px off the bottom, 66px tall.
       padding: EdgeInsets.fromLTRB(
-        AppSpacing.space5,
+        AppSpacing.space4,
         AppSpacing.space2,
-        AppSpacing.space5,
-        bottomInset > 0 ? bottomInset : 14,
+        AppSpacing.space4,
+        bottomInset > 0 ? bottomInset : 15,
       ),
       child: Container(
-        height: 72,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2),
+        height: 66,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(28),
+          // `rounded-pill`, per the shape table — the bar is in the same
+          // family as buttons, badges and toggles, not the card family.
+          borderRadius: BorderRadius.circular(AppRadius.pill),
           // A soft lift rather than an outline — the light theme reads as
           // floating cards, so a hard border here would fight everything else.
           boxShadow: const [
             BoxShadow(
-              color: Color(0x1A0F2E1E),
-              blurRadius: 16,
-              offset: Offset(0, 6),
+              color: Color(0x2913281C), // rgba(19,40,28,.16)
+              blurRadius: 24,
+              offset: Offset(0, 8),
             ),
           ],
         ),
@@ -191,7 +195,7 @@ class _CentreAction extends ConsumerWidget {
       width: 62,
       // Lifted out of the bar's bounds, as in `PillTabBar`'s `top: -20`.
       child: Transform.translate(
-        offset: const Offset(0, -18),
+        offset: const Offset(0, -14),
         child: Semantics(
           button: true,
           label: 'Log a meal',
@@ -203,15 +207,24 @@ class _CentreAction extends ConsumerWidget {
               MainShell.push(context, const LogMealScreen());
             },
             child: Container(
-              width: 56,
-              height: 56,
+              width: 62,
+              height: 62,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: AppColors.lime,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.surface, width: 5),
+                // The ring is canvas-white rather than pure surface, which is
+                // what makes the button read as punched through the bar.
+                border: Border.all(color: const Color(0xFFF7FBF3), width: 4),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x80A6D934),
+                    blurRadius: 14,
+                    offset: Offset(0, 5),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.add, size: 24, color: AppColors.ink),
+              child: const Icon(Icons.add, size: 27, color: AppColors.ink),
             ),
           ),
         ),
@@ -256,8 +269,8 @@ class _TabSlot extends StatelessWidget {
               ),
               child: Icon(
                 icon,
-                size: 21,
-                color: active ? AppColors.brand : AppColors.faint,
+                size: 25,
+                color: active ? AppColors.brand600 : AppColors.faint,
               ),
             ),
             if (active)

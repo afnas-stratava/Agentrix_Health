@@ -18,6 +18,7 @@ import '../../providers/insights_providers.dart';
 import '../../providers/labs_providers.dart';
 import '../../providers/main_tab_provider.dart';
 import '../../providers/nutrition_providers.dart';
+import '../../providers/user_profile_provider.dart';
 import '../../../core/widgets/surface_card.dart';
 import '../../widgets/canvas_wash.dart';
 import '../../widgets/health/readiness_hero.dart';
@@ -60,10 +61,12 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(userProfileProvider);
     final seriesAsync = ref.watch(healthSeriesProvider);
     final metrics = ref.watch(metricStatsProvider);
     final readiness = ref.watch(readinessProvider);
     final brief = ref.watch(dailyBriefProvider);
+    final briefTeaser = ref.watch(briefTeaserProvider);
     final insights = ref.watch(insightsProvider);
     final headline = ref.watch(headlineInsightProvider);
     final urgentCount = ref.watch(urgentInsightCountProvider);
@@ -134,16 +137,20 @@ class HomeScreen extends ConsumerWidget {
             // MORNING BRIEF — the composed plan. Above readiness because the score
             // is an input to it, and a user who reads one thing should read the
             // plan, not the number.
-            if (brief != null)
-              _Section(
-                delay: 20,
-                child: _BriefCard(
-                  headline: brief.headline,
-                  detail: '${brief.workout.title} · ${brief.foodFocus.title}',
-                  onTap: () =>
-                      MainShell.push(context, const MorningBriefScreen()),
-                ),
+            //
+            // Rendered even before a plan exists: a section that vanishes reads
+            // as a broken screen, where an empty one reads as "not yet".
+            _Section(
+              delay: 20,
+              child: _BriefCard(
+                headline: brief?.headline ?? briefTeaser,
+                detail: brief == null
+                    ? null
+                    : '${brief.workout.title} · ${brief.foodFocus.title}',
+                onTap: () =>
+                    MainShell.push(context, const MorningBriefScreen()),
               ),
+            ),
 
             // HERO
             _Section(
@@ -233,36 +240,40 @@ class HomeScreen extends ConsumerWidget {
             ),
 
             // FUEL — today's intake against today's target, and the way into the
-            // restaurant picker. Only rendered once targets exist; a calorie strip
-            // reading "0 / 0" is worse than no strip.
-            if (targets != null)
-              _Section(
-                delay: 160,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionHeader(
-                      title: 'Fuel',
-                      actionLabel: 'Log a meal',
-                      onAction: () =>
-                          MainShell.push(context, const LogMealScreen()),
-                    ),
-                    _FuelCard(
-                      caloriesConsumed: consumed.calories,
-                      caloriesTarget: targets.calories,
-                      proteinConsumed: consumed.proteinG,
-                      proteinTarget: targets.macros.proteinG,
-                      remaining: remaining,
-                      isCheatDay: targets.isCheatDay,
-                      onOpenFood: () => ref
-                          .read(mainTabProvider.notifier)
-                          .select(MainTab.food),
-                      onOpenDining: () =>
-                          MainShell.push(context, const DiningScreen()),
-                    ),
-                  ],
-                ),
+            // restaurant picker. Shown with a dashed-out target rather than
+            // hidden when there is nothing to compare against: what is logged is
+            // known either way, and the row is the way into the food log.
+            _Section(
+              delay: 160,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SectionHeader(
+                    title: 'Fuel',
+                    actionLabel: 'Log a meal',
+                    onAction: () =>
+                        MainShell.push(context, const LogMealScreen()),
+                  ),
+                  _FuelCard(
+                    caloriesConsumed: consumed.calories,
+                    caloriesTarget: targets?.calories,
+                    proteinConsumed: consumed.proteinG,
+                    proteinTarget: targets?.macros.proteinG,
+                    remaining: remaining,
+                    isCheatDay: targets?.isCheatDay ?? false,
+                    // Height and weight are assumed when absent; age is the one
+                    // input nothing can stand in for, so it is what to ask for.
+                    noTargetHint: profile.ageYears == null
+                        ? 'Add your age in Settings for a daily target'
+                        : 'No daily target yet',
+                    onOpenFood: () =>
+                        ref.read(mainTabProvider.notifier).select(MainTab.food),
+                    onOpenDining: () =>
+                        MainShell.push(context, const DiningScreen()),
+                  ),
+                ],
               ),
+            ),
 
             // HEADLINE FINDING — the product's differentiator.
             _Section(
@@ -296,13 +307,22 @@ class HomeScreen extends ConsumerWidget {
             ),
 
             // ACTIONS — a vertical list, nothing hidden behind a swipe.
-            if (actions.isNotEmpty)
-              _Section(
-                delay: 280,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SectionHeader(title: 'Do this today'),
+            _Section(
+              delay: 280,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SectionHeader(
+                    title: 'Do this today',
+                    count: actions.length,
+                  ),
+                  if (actions.isEmpty)
+                    const _EmptyRow(
+                      icon: Icons.check_circle_outline,
+                      text: 'Nothing queued — actions appear here as findings '
+                          'do.',
+                    )
+                  else
                     SurfaceCard(
                       padded: false,
                       child: Column(
@@ -319,9 +339,9 @@ class HomeScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
+            ),
 
             // LAB STATUS — keeps the correlation half of the product alive.
             _Section(
@@ -546,7 +566,11 @@ class _BriefCard extends StatelessWidget {
   });
 
   final String headline;
-  final String detail;
+
+  /// Null while the plan is still being composed — the headline carries the
+  /// "not yet" on its own rather than the card showing an empty second line.
+  final String? detail;
+
   final VoidCallback onTap;
 
   @override
@@ -594,13 +618,15 @@ class _BriefCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(headline, style: AppTextStyles.h5.copyWith(height: 1.33)),
-            const SizedBox(height: 4),
-            Text(
-              detail,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.cardBody.copyWith(height: 1.4),
-            ),
+            if (detail != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                detail!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.cardBody.copyWith(height: 1.4),
+              ),
+            ],
           ],
         ),
       ),
@@ -619,25 +645,35 @@ class _FuelCard extends StatelessWidget {
     required this.proteinTarget,
     required this.remaining,
     required this.isCheatDay,
+    required this.noTargetHint,
     required this.onOpenFood,
     required this.onOpenDining,
   });
 
   final int caloriesConsumed;
-  final int caloriesTarget;
+
+  /// Null until the profile carries enough to compute one.
+  final int? caloriesTarget;
+
   final double proteinConsumed;
-  final int proteinTarget;
+  final int? proteinTarget;
   final int? remaining;
   final bool isCheatDay;
+
+  /// Shown in place of the protein line when there is no target.
+  final String noTargetHint;
+
   final VoidCallback onOpenFood;
   final VoidCallback onOpenDining;
 
   @override
   Widget build(BuildContext context) {
-    final progress = (caloriesConsumed / caloriesTarget.clamp(1, 100000)).clamp(
-      0.0,
-      1.0,
-    );
+    final target = caloriesTarget;
+    // An empty track, not a full one: with no target there is nothing to be
+    // any fraction of.
+    final progress = target == null
+        ? 0.0
+        : (caloriesConsumed / target.clamp(1, 100000)).clamp(0.0, 1.0);
 
     return Container(
       decoration: BoxDecoration(
@@ -651,8 +687,9 @@ class _FuelCard extends StatelessWidget {
         children: [
           PressableScale(
             scaleTo: 0.99,
-            semanticLabel:
-                '$caloriesConsumed of $caloriesTarget calories eaten today',
+            semanticLabel: target == null
+                ? '$caloriesConsumed calories logged today, no target set'
+                : '$caloriesConsumed of $target calories eaten today',
             onTap: onOpenFood,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -672,28 +709,37 @@ class _FuelCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${proteinConsumed.round()} of $proteinTarget g '
-                          'protein${isCheatDay ? ' · cheat day' : ''}',
+                          proteinTarget == null
+                              ? '${proteinConsumed.round()} g protein · '
+                                    '$noTargetHint'
+                              : '${proteinConsumed.round()} of $proteinTarget g '
+                                    'protein${isCheatDay ? ' · cheat day' : ''}',
                           style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
                         ),
                       ],
                     ),
                   ),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                    child: SizedBox(
-                      width: 64,
-                      height: 6,
-                      child: ColoredBox(
-                        color: AppColors.ink.withValues(alpha: 0.08),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: progress,
-                          child: const ColoredBox(color: AppColors.brand),
+                  // "Never render 0 / 0": with no target there is no ratio to
+                  // draw, so the bar is absent rather than empty.
+                  if (target != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      child: SizedBox(
+                        width: 64,
+                        height: 8,
+                        child: ColoredBox(
+                          color: const Color(0xFFE7EFE7),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: progress,
+                            heightFactor: 1,
+                            child: const ColoredBox(
+                              color: AppColors.limeStrong,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -740,14 +786,54 @@ class _RowIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 40,
-      height: 40,
+      width: 44,
+      height: 44,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppColors.brand50,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Icon(icon, size: 17, color: AppColors.brand),
+      child: Icon(icon, size: 19, color: AppColors.brand),
+    );
+  }
+}
+
+/// A section that has nothing in it yet, kept on screen rather than dropped.
+///
+/// The quieter sibling of [_NoFindings]: one line, no title, because the
+/// section header above it has already said what this is.
+class _EmptyRow extends StatelessWidget {
+  const _EmptyRow({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space4,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.hairline),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacing.space3,
+        children: [
+          Icon(icon, size: 17, color: AppColors.faint),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTextStyles.cardBody.copyWith(height: 1.45),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

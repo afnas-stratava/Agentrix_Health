@@ -68,12 +68,13 @@ abstract final class AppTextStyles {
 
   /// Uppercase micro-label: `text-[11px] font-semibold uppercase tracking-wider`.
   ///
-  /// Tailwind's `tracking-wider` is 0.05em — 0.55px here, not the ~1.1px this
-  /// app had been using, which read as spaced-out rather than merely uppercase.
+  /// Section header, per the design reference's type scale: 11px / 700 /
+  /// 0.09em, uppercased at the call site. The tracking is the reference's, not
+  /// Tailwind's `tracking-wider` — 0.09em is a hair under 1px at this size.
   static final TextStyle microLabel = GoogleFonts.interTight(
     fontSize: 11,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.55,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.09 * 11,
     color: AppColors.muted,
   );
 

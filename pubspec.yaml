@@ -60,6 +60,10 @@ dependencies:
   # survives a restart without needing a backend.
   shared_preferences: ^2.3.3
 
+  # Opens the clinical references cited by an insight, as `Linking.openURL`
+  # does in the React Native build.
+  url_launcher: ^6.3.1
+
 # Build workaround, not a preference — remove once Xcode ships the iOS 26.1 SDK.
 #
 # `health` pulls `device_info_plus: ^12.1.0`, and 12.4.0 calls

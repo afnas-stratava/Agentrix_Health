@@ -61,12 +61,16 @@ class WelcomeScreen extends ConsumerWidget {
                         ),
                         children: [
                           const TextSpan(text: 'Your labs.\nYour wearable.\n'),
+                          // `font-sans` in RN — regular weight, and the lime
+                          // accent, so the third line reads as a different
+                          // voice rather than more of the same sentence.
                           TextSpan(
                             text: 'One picture.',
                             style: AppTextStyles.h1.copyWith(
                               fontSize: 40,
                               height: 1.15,
-                              color: AppColors.accent2_800,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.lime,
                             ),
                           ),
                         ],

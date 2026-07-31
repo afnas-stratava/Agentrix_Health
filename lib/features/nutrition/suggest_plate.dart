@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../domain/entities/nutrition/food_definition.dart';
 import '../../domain/entities/profile/cuisine.dart';
 import '../../domain/entities/user_profile.dart';
@@ -147,36 +149,42 @@ List<PlateSuggestion> suggestPlate({
       continue;
     }
 
-    var score = 0.0;
-    var reason = 'Common at this time of day';
-
     final slotIndex = affinity.indexOf(food.id);
-    if (slotIndex >= 0) {
-      score += 40 - slotIndex;
-    } else {
-      // Not typical of this slot — still selectable via search, but it does not
-      // belong in a pre-selected shortlist.
-      continue;
-    }
+    // Not typical of this slot — still selectable via search, but it does not
+    // belong in a pre-selected shortlist.
+    if (slotIndex == -1) continue;
 
-    final cuisineIndex = food.cuisine == null
+    // Base score decays down the slot list.
+    var score = 1 - slotIndex / affinity.length;
+    final reasons = <String>[];
+
+    final cuisineRank = food.cuisine == null
         ? -1
         : cuisines.indexOf(food.cuisine!);
-    if (cuisineIndex == 0) {
-      score += 25;
-      reason = 'Your top cuisine, and typical of ${slot.label.toLowerCase()}';
-    } else if (cuisineIndex > 0) {
-      score += 18 - cuisineIndex * 2;
-      reason = 'A cuisine you eat often';
+    if (cuisineRank == 0) {
+      score += 0.45;
+      reasons.add('your top cuisine');
+    } else if (cuisineRank > 0) {
+      score += 0.3 - cuisineRank * 0.05;
+      reasons.add('a cuisine you picked');
     }
 
     final recentIndex = recentFoodIds.indexOf(food.id);
-    if (recentIndex >= 0) {
-      score += 30 - recentIndex.clamp(0, 20);
-      reason = 'You have logged this before';
+    if (recentIndex != -1) {
+      // Logged recently — people eat the same twenty things.
+      score += math.max(0.1, 0.4 - recentIndex * 0.03);
+      reasons.add('you logged this recently');
     }
 
-    scored.add((food: food, score: score, reason: reason));
+    scored.add((
+      food: food,
+      score: score,
+      // The strongest reason wins; cuisine is pushed before recency because
+      // "your top cuisine" explains the pick better than "you ate it before".
+      reason: reasons.isNotEmpty
+          ? reasons.first
+          : 'common at ${slot.label.toLowerCase()}',
+    ));
   }
 
   scored.sort((a, b) {
@@ -184,20 +192,14 @@ List<PlateSuggestion> suggestPlate({
     return byScore != 0 ? byScore : a.food.name.compareTo(b.food.name);
   });
 
-  final top = scored.take(limit).toList();
-  if (top.isEmpty) return const [];
-
-  final best = top.first.score;
-
-  return top
+  return scored
+      .take(limit)
       .map(
         (entry) => PlateSuggestion(
           food: entry.food,
-          // Normalised against the best candidate and capped below 1, because
-          // nothing here is an identification.
-          confidence: best <= 0
-              ? 0.4
-              : (0.35 + 0.5 * (entry.score / best)).clamp(0.1, 0.9),
+          // Held below 0.8 on purpose: these are candidates awaiting
+          // confirmation, never identifications.
+          confidence: math.min(0.78, (entry.score * 100).round() / 100),
           reason: entry.reason,
         ),
       )

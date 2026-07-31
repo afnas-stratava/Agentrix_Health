@@ -114,6 +114,9 @@ class FoodLogScreen extends ConsumerWidget {
                     CalorieRing(
                       consumed: consumed.calories,
                       target: targets.calories,
+                      // The component defaults to 152; Food asks for 132 so the
+                      // macro bars beside it keep their full width.
+                      size: 132,
                     ),
                     Expanded(
                       child: MacroBars(
@@ -418,7 +421,7 @@ class _CheatDayToggle extends StatelessWidget {
           decoration: BoxDecoration(
             color: active ? AppColors.limeSoft : AppColors.surface,
             border: Border.all(
-              color: active ? AppColors.accent2_300 : AppColors.hairline,
+              color: active ? AppColors.limeStrong : AppColors.hairline,
             ),
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),

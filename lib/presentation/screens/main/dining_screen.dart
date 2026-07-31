@@ -290,7 +290,7 @@ class _ModeToggle extends StatelessWidget {
           decoration: BoxDecoration(
             color: cheat ? AppColors.limeSoft : AppColors.surface,
             border: Border.all(
-              color: cheat ? AppColors.accent2_300 : AppColors.hairline,
+              color: cheat ? AppColors.limeStrong : AppColors.hairline,
             ),
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
