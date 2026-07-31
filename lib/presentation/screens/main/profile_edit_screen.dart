@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -228,7 +229,8 @@ class ProfileEditScreen extends ConsumerWidget {
         // ALLERGENS
         _Group(
           title: 'Allergies',
-          detail: 'Excluded outright from every food and restaurant '
+          detail:
+              'Excluded outright from every food and restaurant '
               'recommendation, including on a cheat day.',
           child: choice.ChipGroup(
             children: [
@@ -267,7 +269,8 @@ class ProfileEditScreen extends ConsumerWidget {
         // CUISINES
         _Group(
           title: 'Cuisines',
-          detail: 'Tapped in order of preference — the first carries the most '
+          detail:
+              'Tapped in order of preference — the first carries the most '
               'weight when we suggest somewhere to eat.',
           child: choice.ChipGroup(
             children: [
@@ -447,7 +450,9 @@ class _BodyStats extends StatelessWidget {
           Row(
             children: [
               if (bmi != null)
-                Expanded(child: _Stat(label: 'BMI', value: '$bmi')),
+                Expanded(
+                  child: _Stat(label: 'BMI', value: '$bmi'),
+                ),
               if (bmr != null)
                 Expanded(
                   child: _Stat(
@@ -462,10 +467,7 @@ class _BodyStats extends StatelessWidget {
             'BMI is a population screening tool, not a diagnosis — it says '
             'nothing about body composition, and a muscular person will read '
             '“overweight” on it.',
-            style: AppTextStyles.cardMeta.copyWith(
-              fontSize: 11,
-              height: 1.36,
-            ),
+            style: AppTextStyles.cardMeta.copyWith(fontSize: 11, height: 1.36),
           ),
         ],
       ),
@@ -563,8 +565,10 @@ class _CycleCard extends ConsumerWidget {
               Switch.adaptive(
                 value: cycle.tracks,
                 activeTrackColor: AppColors.brand,
-                onChanged: (tracks) =>
-                    notifier.updateCycle(cycle.copyWith(tracks: tracks)),
+                onChanged: (tracks) {
+                  HapticFeedback.selectionClick();
+                  notifier.updateCycle(cycle.copyWith(tracks: tracks));
+                },
               ),
             ],
           ),
@@ -632,8 +636,9 @@ class _CycleCard extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    for (final day
-                        in ([...cycle.periodStarts]..sort()).reversed.take(4))
+                    for (final day in ([
+                      ...cycle.periodStarts,
+                    ]..sort()).reversed.take(4))
                       Text(
                         '• ${formatRelativeDay(day)}',
                         style: AppTextStyles.cardMeta.copyWith(fontSize: 12),
@@ -664,9 +669,12 @@ class _CycleCard extends ConsumerWidget {
                             Switch.adaptive(
                               value: cycle.hormonalContraception,
                               activeTrackColor: AppColors.brand,
-                              onChanged: (value) => notifier.updateCycle(
-                                cycle.copyWith(hormonalContraception: value),
-                              ),
+                              onChanged: (value) {
+                                HapticFeedback.selectionClick();
+                                notifier.updateCycle(
+                                  cycle.copyWith(hormonalContraception: value),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -706,5 +714,10 @@ class _CycleCard extends ConsumerWidget {
       return;
     }
     await logPeriodStart(ref);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Period start logged for today.')),
+      );
+    }
   }
 }

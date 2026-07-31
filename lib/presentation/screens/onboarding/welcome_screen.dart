@@ -79,6 +79,29 @@ class WelcomeScreen extends ConsumerWidget {
                     const SizedBox(
                       height: AppSpacing.space8 + AppSpacing.space2,
                     ),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.space4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border.all(color: AppColors.hairline),
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x140F2E1E),
+                            blurRadius: 18,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'A calm, private view of your health trends — built to help you spot what matters without overwhelming you.',
+                        style: AppTextStyles.cardBody.copyWith(
+                          fontSize: 13,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space6),
                     for (final point in _points)
                       Padding(
                         padding: const EdgeInsets.only(

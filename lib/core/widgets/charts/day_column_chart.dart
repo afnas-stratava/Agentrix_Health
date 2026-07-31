@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -115,6 +116,7 @@ class DayColumnChart extends StatelessWidget {
                       final index = (details.localPosition.dx / band)
                           .floor()
                           .clamp(0, values.length - 1);
+                      HapticFeedback.selectionClick();
                       onSelect!(index);
                     },
               child: CustomPaint(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -63,7 +64,10 @@ class ActionRow extends StatelessWidget {
       label: suggestion.title,
       hint: '${_effortLabel[suggestion.effort]} effort. From: ${source.title}',
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
         child: Container(
           decoration: BoxDecoration(
             border: isLast

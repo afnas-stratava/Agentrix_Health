@@ -7,8 +7,13 @@ import '../../core/theme/app_colors.dart';
 /// read as ambient light rather than as the hard vignettes a dark theme needs.
 ///
 /// **Today only.** Every other screen in the React Native app is a plain
-/// `bg-canvas` — this used to wrap the whole shell, which put a green gradient
-/// behind Food, Insights, Labs and Settings that RN does not have.
+/// `bg-canvas`, so `MainShell` applies this only while the Today tab is active —
+/// wrapping the shell unconditionally would put a green gradient behind Food,
+/// Insights, Labs and Settings that RN does not have.
+///
+/// It is applied by the shell rather than by the screen so that it paints
+/// *outside* the top safe area. Inside it, the gradient started below the notch
+/// and the seam against the flat canvas above read as a colour mismatch.
 class CanvasWash extends StatelessWidget {
   const CanvasWash({super.key, required this.child});
 
@@ -23,7 +28,7 @@ class CanvasWash extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFE4F4DA), Color(0xFFF4FAF1), Color(0xFFFBFDF9)],
+          colors: [AppColors.canvas, Color(0xFFEAF7E0), Color(0xFFF8FCF6)],
           stops: [0, 0.45, 1],
         ),
       ),
@@ -32,12 +37,20 @@ class CanvasWash extends StatelessWidget {
           Positioned(
             top: -width * 0.55,
             left: -width * 0.25,
-            child: _Bloom(size: width * 1.3, color: const Color(0xFFCDEBB8), opacity: 0.35),
+            child: _Bloom(
+              size: width * 1.3,
+              color: const Color(0xFFCDEBB8),
+              opacity: 0.35,
+            ),
           ),
           Positioned(
             bottom: -width * 0.5,
             right: -width * 0.35,
-            child: _Bloom(size: width * 1.1, color: const Color(0xFFDCF3C9), opacity: 0.3),
+            child: _Bloom(
+              size: width * 1.1,
+              color: const Color(0xFFDCF3C9),
+              opacity: 0.3,
+            ),
           ),
           child,
         ],

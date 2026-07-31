@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -46,7 +47,10 @@ class AppChoiceRow extends StatelessWidget {
         color: selected ? AppColors.brand50 : AppColors.surface,
         borderRadius: radius,
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
           borderRadius: radius,
           child: Container(
             padding: const EdgeInsets.all(AppSpacing.space4),

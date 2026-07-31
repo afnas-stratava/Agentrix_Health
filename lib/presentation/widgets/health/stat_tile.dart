@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -57,7 +58,12 @@ class StatTile extends StatelessWidget {
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppRadius.card),
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.lightImpact();
+                onTap!();
+              },
         borderRadius: BorderRadius.circular(AppRadius.card),
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.space4),
@@ -169,7 +175,12 @@ class SignalChip extends StatelessWidget {
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.lightImpact();
+                onTap!();
+              },
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),

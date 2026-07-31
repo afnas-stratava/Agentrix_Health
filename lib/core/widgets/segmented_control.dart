@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -68,7 +69,10 @@ class SegmentedControl<T> extends StatelessWidget {
     );
 
     final tappable = InkWell(
-      onTap: () => onChanged(option.value),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onChanged(option.value);
+      },
       child: child,
     );
     return expand ? Expanded(child: tappable) : tappable;

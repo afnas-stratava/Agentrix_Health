@@ -81,10 +81,7 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
       }
       final definition = food.foodId == null ? null : findFood(food.foodId!);
       if (definition == null) return;
-      _selected[index] = LoggedFood.fromDefinition(
-        definition,
-        portions: next,
-      );
+      _selected[index] = LoggedFood.fromDefinition(definition, portions: next);
     });
   }
 
@@ -106,26 +103,42 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
   }
 
   Future<void> _save() async {
-    if (_selected.isEmpty) return;
+    if (_selected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add at least one food before saving your meal.'),
+        ),
+      );
+      return;
+    }
     await HapticFeedback.mediumImpact();
 
     final now = DateTime.now();
-    await ref.read(mealLogProvider.notifier).add(
-      MealEntry(
-        id: 'meal-${now.microsecondsSinceEpoch}',
-        day: toIsoDay(now),
-        loggedAt: now,
-        slot: _slot,
-        source: _photoPath != null ? MealSource.photo : MealSource.database,
-        foods: List.of(_selected),
-        photoPath: _photoPath,
-        // Confirmed by the user on this screen, so the entry is fully trusted
-        // regardless of how the foods got onto the list.
-        confidence: 1,
-      ),
-    );
+    await ref
+        .read(mealLogProvider.notifier)
+        .add(
+          MealEntry(
+            id: 'meal-${now.microsecondsSinceEpoch}',
+            day: toIsoDay(now),
+            loggedAt: now,
+            slot: _slot,
+            source: _photoPath != null ? MealSource.photo : MealSource.database,
+            foods: List.of(_selected),
+            photoPath: _photoPath,
+            // Confirmed by the user on this screen, so the entry is fully trusted
+            // regardless of how the foods got onto the list.
+            confidence: 1,
+          ),
+        );
 
-    if (mounted) Navigator.of(context).maybePop();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Meal saved. Your food log has been updated.'),
+        ),
+      );
+      Navigator.of(context).maybePop();
+    }
   }
 
   @override
@@ -173,8 +186,7 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
 
         Expanded(
           child: ListView(
-            keyboardDismissBehavior:
-                ScrollViewKeyboardDismissBehavior.onDrag,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.only(bottom: AppSpacing.space6),
             children: [
               // SLOT
@@ -224,15 +236,17 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
                                 Icons.photo_camera_outlined,
                                 size: 15,
                               ),
-                              onPressed: () =>
-                                  _attachPhoto(ImageSource.camera),
+                              onPressed: () => _attachPhoto(ImageSource.camera),
                             ),
                           ),
                           Expanded(
                             child: AppButton(
                               label: 'From library',
                               variant: AppButtonVariant.secondary,
-                              leading: const Icon(Icons.image_outlined, size: 15),
+                              leading: const Icon(
+                                Icons.image_outlined,
+                                size: 15,
+                              ),
                               onPressed: () =>
                                   _attachPhoto(ImageSource.gallery),
                             ),
@@ -332,7 +346,9 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
                       // The disclosure sits above the list, not under it: it
                       // changes how the list should be read.
                       Container(
-                        margin: const EdgeInsets.only(bottom: AppSpacing.space3),
+                        margin: const EdgeInsets.only(
+                          bottom: AppSpacing.space3,
+                        ),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 10,
@@ -386,11 +402,7 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
           ),
         ),
 
-        _SaveBar(
-          total: _total,
-          count: _selected.length,
-          onSave: _save,
-        ),
+        _SaveBar(total: _total, count: _selected.length, onSave: _save),
       ],
     );
   }
@@ -413,7 +425,10 @@ class _SlotChip extends StatelessWidget {
       selected: selected,
       button: true,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
         borderRadius: BorderRadius.circular(AppRadius.pill),
         child: Container(
           alignment: Alignment.center,
@@ -476,7 +491,10 @@ class _PhotoPreview extends StatelessWidget {
             button: true,
             label: 'Remove photo',
             child: InkWell(
-              onTap: onRemove,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onRemove();
+              },
               borderRadius: BorderRadius.circular(AppRadius.pill),
               child: Container(
                 width: 32,
@@ -574,7 +592,10 @@ class _SearchFieldState extends State<_SearchField> {
               button: true,
               label: 'Clear',
               child: InkWell(
-                onTap: widget.onClear,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  widget.onClear();
+                },
                 child: const Icon(
                   Icons.close,
                   size: 15,
@@ -639,7 +660,10 @@ class _SelectedRow extends StatelessWidget {
               _StepButton(
                 icon: Icons.remove,
                 label: 'Less ${food.name}',
-                onTap: onLess,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onLess();
+                },
               ),
               SizedBox(
                 width: 26,
@@ -658,7 +682,10 @@ class _SelectedRow extends StatelessWidget {
                 icon: Icons.add,
                 label: 'More ${food.name}',
                 filled: true,
-                onTap: onMore,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onMore();
+                },
               ),
             ],
           ),
@@ -687,7 +714,10 @@ class _StepButton extends StatelessWidget {
       button: true,
       label: label,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
         borderRadius: BorderRadius.circular(AppRadius.pill),
         child: Container(
           width: 28,

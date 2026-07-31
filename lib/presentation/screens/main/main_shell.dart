@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/status_bar_style.dart';
 import '../../providers/main_tab_provider.dart';
+import '../../widgets/canvas_wash.dart';
 import 'food_log_screen.dart';
 import 'home_screen.dart';
 import 'insights_screen.dart';
@@ -51,33 +52,36 @@ class MainShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeTab = ref.watch(mainTabProvider);
 
+    final content = Stack(
+      children: [
+        SafeArea(
+          bottom: false,
+          // Order must match `MainTab`'s declaration order — IndexedStack
+          // selects by index, so a mismatch silently shows the wrong screen.
+          child: IndexedStack(
+            index: activeTab.index,
+            children: const [
+              HomeScreen(),
+              FoodLogScreen(),
+              InsightsScreen(),
+              LabsScreen(),
+              ProfileScreen(),
+            ],
+          ),
+        ),
+        const Align(alignment: Alignment.bottomCenter, child: _PillTabBar()),
+      ],
+    );
+
+    // Only Today carries the gradient wash — but it is painted *here*, outside
+    // the safe area, so it runs behind the status bar. Applied inside the screen
+    // it started below the notch, and the seam where flat canvas met the top of
+    // the gradient read as two different greens.
     return StatusBarStyle(
       light: false,
-      // Plain canvas: only Today carries the gradient wash, and it applies it
-      // itself.
-      child: ColoredBox(
-        color: AppColors.canvas,
-        child: Stack(
-          children: [
-            SafeArea(
-              bottom: false,
-              // Order must match `MainTab`'s declaration order — IndexedStack
-              // selects by index, so a mismatch silently shows the wrong screen.
-              child: IndexedStack(
-                index: activeTab.index,
-                children: const [
-                  HomeScreen(),
-                  FoodLogScreen(),
-                  InsightsScreen(),
-                  LabsScreen(),
-                  ProfileScreen(),
-                ],
-              ),
-            ),
-            const Align(alignment: Alignment.bottomCenter, child: _PillTabBar()),
-          ],
-        ),
-      ),
+      child: activeTab == MainTab.today
+          ? CanvasWash(child: content)
+          : ColoredBox(color: AppColors.canvas, child: content),
     );
   }
 }
@@ -177,14 +181,23 @@ class _PillTabBar extends ConsumerWidget {
             ),
           ],
         ),
-        child: Row(
-          children: [
-            slot(_items[0]),
-            slot(_items[1]),
-            const _CentreAction(),
-            slot(_items[2]),
-            slot(_items[3]),
-          ],
+        // Ink needs a Material at or above it to paint on. The nearest one was
+        // the root in `app.dart`, *below* this bar's opaque white fill, so every
+        // tap ripple was painted underneath the bar and never seen — selecting a
+        // tab felt inert. A transparent Material here puts the ripple on top of
+        // the pill. It deliberately does not clip: the centre action is lifted
+        // above the bar's bounds and clipping would slice its top off.
+        child: Material(
+          type: MaterialType.transparency,
+          child: Row(
+            children: [
+              slot(_items[0]),
+              slot(_items[1]),
+              const _CentreAction(),
+              slot(_items[2]),
+              slot(_items[3]),
+            ],
+          ),
         ),
       ),
     );
@@ -256,45 +269,68 @@ class _TabSlot extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
+  static const Duration _transition = Duration(milliseconds: 180);
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
       selected: active,
       label: label,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.space2),
-              decoration: BoxDecoration(
-                color: active ? AppColors.brand50 : Colors.transparent,
-                shape: BoxShape.circle,
+      // The inactive labels are laid out but invisible; without this a screen
+      // reader would announce all four of them on top of the slot's own label.
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // The brand-50 disc this used to sit on was #EFF8F1 against a
+              // white bar — barely a percent of contrast, so it read as a
+              // smudge rather than a highlight. Colour and the label carry the
+              // selected state instead, as in the design reference's `.tab.on`.
+              TweenAnimationBuilder<Color?>(
+                tween: ColorTween(
+                  end: active ? AppColors.brand600 : AppColors.faint,
+                ),
+                duration: _transition,
+                curve: Curves.easeOut,
+                builder: (context, value, _) =>
+                    Icon(icon, size: 25, color: value ?? AppColors.faint),
               ),
-              child: Icon(
-                icon,
-                size: 25,
-                color: active ? AppColors.brand600 : AppColors.faint,
-              ),
-            ),
-            if (active)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  label.toUpperCase(),
-                  style: AppTextStyles.tag.copyWith(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: AppColors.brand600,
+              const SizedBox(height: 3),
+              // Always laid out, only faded — `opacity:0` / `.tab.on span
+              // {opacity:1}` in the reference. Rendering it conditionally made
+              // the icon jump on every tap and left the selected slot taller
+              // than its neighbours.
+              AnimatedOpacity(
+                opacity: active ? 1 : 0,
+                duration: _transition,
+                curve: Curves.easeOut,
+                child: SizedBox(
+                  width: double.infinity,
+                  // Scales down rather than ellipsising, so a long label still
+                  // reads in full on a narrow phone.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label.toUpperCase(),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: AppTextStyles.tag.copyWith(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: AppColors.brand600,
+                      ),
+                    ),
                   ),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );

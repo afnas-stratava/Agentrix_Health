@@ -49,8 +49,11 @@ class _SexScreenState extends ConsumerState<SexScreen> {
         _selected ?? ref.watch(biologicalSexProvider);
 
     return OnboardingScaffold(
+      stepIndex: 1,
+      stepCount: 6,
       title: 'Which reference ranges should we use?',
-      intro: 'Lab reference intervals differ by biological sex. This is only '
+      intro:
+          'Lab reference intervals differ by biological sex. This is only '
           'used to flag your results correctly — it is stored on your device '
           'and never sent anywhere.',
       onContinue: () {

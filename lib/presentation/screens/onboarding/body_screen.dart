@@ -39,16 +39,19 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canContinue =
-        _heightCm != null && _weightKg != null && _age != null;
+    final canContinue = _heightCm != null && _weightKg != null && _age != null;
     final activity = _activity ?? ActivityLevel.moderate;
 
     return OnboardingScaffold(
+      stepIndex: 2,
+      stepCount: 6,
       title: 'A few numbers about you',
-      intro: 'These four figures are what your calorie, protein and hydration '
+      intro:
+          'These four figures are what your calorie, protein and hydration '
           'targets are calculated from. They stay on this device.',
       canContinue: canContinue,
-      blockedHint: 'Set all three to continue — without them we cannot compute '
+      blockedHint:
+          'Set all three to continue — without them we cannot compute '
           'a target.',
       onContinue: () {
         final notifier = ref.read(userProfileProvider.notifier);
@@ -89,7 +92,8 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
 
         const OnboardingLabel(
           'How active are you?',
-          detail: 'Only used until your watch has a week of data — after that '
+          detail:
+              'Only used until your watch has a week of data — after that '
               'we use what you actually burn instead of this estimate.',
         ),
 

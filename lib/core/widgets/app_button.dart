@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -25,6 +26,7 @@ class AppButton extends StatelessWidget {
     this.foregroundColor,
     this.backgroundColor,
     this.borderColor,
+    this.haptics,
   });
 
   const AppButton.icon({
@@ -36,6 +38,7 @@ class AppButton extends StatelessWidget {
     this.foregroundColor,
     this.backgroundColor,
     this.borderColor,
+    this.haptics,
   }) : label = '',
        block = false;
 
@@ -49,7 +52,41 @@ class AppButton extends StatelessWidget {
   final Color? backgroundColor;
   final Color? borderColor;
 
+  /// Opt out for high-frequency taps, per the RN `Button`'s `haptics` prop.
+  ///
+  /// Null means "use the variant's default", which is what almost every call
+  /// site wants. Set false where a control is tapped repeatedly and a buzz per
+  /// tap turns into a rattle.
+  final bool? haptics;
+
   bool get _iconOnly => label.isEmpty && leading != null;
+
+  /// Mirrors `src/components/ui/Button.tsx`: a weighty press for the variants
+  /// that commit to something, and the lighter selection tick for the ones that
+  /// merely navigate.
+  ///
+  /// The icon-only affordance takes the selection tick regardless of variant —
+  /// RN's `IconButton` calls `selectionAsync()`, and a header refresh button
+  /// that thumps like a primary CTA reads as an error.
+  void _buzz() {
+    if (haptics == false) return;
+
+    if (_iconOnly) {
+      HapticFeedback.selectionClick();
+      return;
+    }
+
+    switch (variant) {
+      case AppButtonVariant.primary:
+      case AppButtonVariant.danger:
+        HapticFeedback.lightImpact();
+      case AppButtonVariant.secondary:
+      case AppButtonVariant.ghost:
+        // Off by default in RN, which buzzes only primary and danger. Opt in
+        // per call site with `haptics: true`.
+        if (haptics == true) HapticFeedback.selectionClick();
+    }
+  }
 
   /// Heights and horizontal padding from the RN `SIZE` map.
   double get _height => switch (size) {
@@ -132,7 +169,12 @@ class AppButton extends StatelessWidget {
         color: bg,
         borderRadius: radius,
         child: InkWell(
-          onTap: onPressed,
+          onTap: disabled
+              ? null
+              : () {
+                  _buzz();
+                  onPressed!();
+                },
           borderRadius: radius,
           child: Container(
             width: _iconOnly ? _iconOnlyDiameter : null,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -66,8 +67,20 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       // visible on the Labs tab.
       navigator.pop();
       unawaited(ref.read(labsProvider.notifier).upload(upload));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your report is being processed. You will see it on the Labs tab shortly.',
+            ),
+          ),
+        );
+      }
     } catch (error) {
       if (!mounted) return;
+      // The only failure feedback on this screen was a line of red text at
+      // the top, which is off-screen once the picker has been dismissed.
+      HapticFeedback.vibrate();
       setState(() => _error = 'Could not read that file: $error');
     } finally {
       if (mounted) setState(() => _picking = null);
@@ -233,7 +246,10 @@ class _GmailCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.card),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => MainShell.push(context, const GmailImportScreen()),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          MainShell.push(context, const GmailImportScreen());
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -389,7 +405,12 @@ class _ManualRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: enabled ? onTap : null,
+      onTap: enabled
+          ? () {
+              HapticFeedback.selectionClick();
+              onTap();
+            }
+          : null,
       child: Container(
         decoration: BoxDecoration(
           border: isFirst
@@ -431,11 +452,7 @@ class _ManualRow extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: AppColors.faint,
-            ),
+            const Icon(Icons.chevron_right, size: 16, color: AppColors.faint),
           ],
         ),
       ),

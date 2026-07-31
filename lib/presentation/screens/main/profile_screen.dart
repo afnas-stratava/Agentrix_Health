@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -30,26 +31,26 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListView(
-      padding: EdgeInsets.only(
-        top: AppSpacing.space1,
-        bottom: MainShell.bottomInsetFor(context),
-      ),
-      children: const [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.space6),
-          child: _Title(),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.space5),
+      child: ListView(
+        padding: EdgeInsets.only(
+          top: AppSpacing.space4,
+          bottom: MainShell.bottomInsetFor(context),
         ),
-        _ProfileSection(),
-        _AppleHealthSection(),
-        _GmailSection(),
-        _ReferenceRangeSection(),
-        _AnalysisWindowSection(),
-        _RuleToggleSection(),
-        _DemoDataSection(),
-        _YourDataSection(),
-        _VersionFooter(),
-      ],
+        children: const [
+          _Title(),
+          _ProfileSection(),
+          _AppleHealthSection(),
+          _GmailSection(),
+          _ReferenceRangeSection(),
+          _AnalysisWindowSection(),
+          _RuleToggleSection(),
+          _DemoDataSection(),
+          _YourDataSection(),
+          _VersionFooter(),
+        ],
+      ),
     );
   }
 }
@@ -132,8 +133,7 @@ class _ProfileSection extends ConsumerWidget {
               PressableScale(
                 scaleTo: 0.99,
                 semanticLabel: 'Edit your profile',
-                onTap: () =>
-                    MainShell.push(context, const ProfileEditScreen()),
+                onTap: () => MainShell.push(context, const ProfileEditScreen()),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.space5,
@@ -297,7 +297,19 @@ class _AppleHealthSection extends ConsumerWidget {
                 AppButton(
                   label: 'Connect Apple Health',
                   block: true,
-                  onPressed: () => requestHealthAccess(ref),
+                  onPressed: () async {
+                    HapticFeedback.lightImpact();
+                    await requestHealthAccess(ref);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Apple Health connection attempt completed.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
                 ),
               ] else ...[
                 const SizedBox(height: AppSpacing.space3),
@@ -416,10 +428,7 @@ class _ReferenceRangeSection extends ConsumerWidget {
               const SizedBox(height: AppSpacing.space4),
               SegmentedControl<BiologicalSex>(
                 options: const [
-                  SegmentedOption(
-                    value: BiologicalSex.female,
-                    label: 'Female',
-                  ),
+                  SegmentedOption(value: BiologicalSex.female, label: 'Female'),
                   SegmentedOption(value: BiologicalSex.male, label: 'Male'),
                   SegmentedOption(
                     value: BiologicalSex.unspecified,
@@ -472,9 +481,8 @@ class _AnalysisWindowSection extends ConsumerWidget {
                     SegmentedOption(value: w, label: '${w.days} days'),
                 ],
                 selected: window,
-                onChanged: (next) => ref
-                    .read(settingsProvider.notifier)
-                    .setAnalysisWindow(next),
+                onChanged: (next) =>
+                    ref.read(settingsProvider.notifier).setAnalysisWindow(next),
               ),
             ],
           ),
@@ -524,17 +532,18 @@ class _RuleToggleSection extends ConsumerWidget {
                         child: Text(
                           rule.name,
                           maxLines: 2,
-                          style: AppTextStyles.bodySmall.copyWith(
-                            fontSize: 14,
-                          ),
+                          style: AppTextStyles.bodySmall.copyWith(fontSize: 14),
                         ),
                       ),
                       Switch.adaptive(
                         value: !muted.contains(rule.id),
                         activeTrackColor: AppColors.brand,
-                        onChanged: (_) => ref
-                            .read(settingsProvider.notifier)
-                            .toggleRule(rule.id),
+                        onChanged: (_) {
+                          HapticFeedback.selectionClick();
+                          ref
+                              .read(settingsProvider.notifier)
+                              .toggleRule(rule.id);
+                        },
                       ),
                     ],
                   ),
@@ -675,9 +684,7 @@ class _YourDataSection extends ConsumerWidget {
                 margin: const EdgeInsets.only(top: AppSpacing.space4),
                 padding: const EdgeInsets.only(top: AppSpacing.space4),
                 decoration: const BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: AppColors.hairline),
-                  ),
+                  border: Border(top: BorderSide(color: AppColors.hairline)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -728,6 +735,11 @@ class _YourDataSection extends ConsumerWidget {
     );
 
     if (confirmed != true) return;
+
+    // Heavier than any other press in the app, and deliberately so: this is the
+    // one irreversible action, and the thump is the confirmation that it went
+    // through on a screen where everything visibly resetting looks like a bug.
+    HapticFeedback.heavyImpact();
 
     await ref.read(labsProvider.notifier).clear();
     await ref.read(mealLogProvider.notifier).clear();

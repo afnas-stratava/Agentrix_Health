@@ -26,6 +26,8 @@ class OnboardingScaffold extends ConsumerWidget {
     this.footerNote,
     this.secondary,
     this.showBack = true,
+    this.stepIndex,
+    this.stepCount,
   });
 
   final String title;
@@ -50,6 +52,8 @@ class OnboardingScaffold extends ConsumerWidget {
   final Widget? secondary;
 
   final bool showBack;
+  final int? stepIndex;
+  final int? stepCount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -83,6 +87,18 @@ class OnboardingScaffold extends ConsumerWidget {
                 AppSpacing.space6,
               ),
               children: [
+                if (stepCount != null && stepIndex != null) ...[
+                  Text(
+                    'Step $stepIndex of $stepCount',
+                    style: AppTextStyles.tag.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.55,
+                      color: AppColors.brand,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space2),
+                ],
                 Text(
                   title,
                   style: AppTextStyles.h2.copyWith(fontSize: 28, height: 1.14),
@@ -171,8 +187,7 @@ class OnboardingLabel extends StatelessWidget {
           Row(
             spacing: AppSpacing.space2,
             children: [
-              if (icon != null)
-                Icon(icon, size: 15, color: AppColors.critical),
+              if (icon != null) Icon(icon, size: 15, color: AppColors.critical),
               Text(
                 label.toUpperCase(),
                 style: AppTextStyles.tag.copyWith(

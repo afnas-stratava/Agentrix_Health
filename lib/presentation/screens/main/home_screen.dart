@@ -20,7 +20,6 @@ import '../../providers/main_tab_provider.dart';
 import '../../providers/nutrition_providers.dart';
 import '../../providers/user_profile_provider.dart';
 import '../../../core/widgets/surface_card.dart';
-import '../../widgets/canvas_wash.dart';
 import '../../widgets/health/readiness_hero.dart';
 import '../../widgets/insights/action_row.dart';
 import '../../widgets/insights/headline_insight.dart';
@@ -99,294 +98,285 @@ class HomeScreen extends ConsumerWidget {
       }
     }
 
-    return CanvasWash(
-      child: RefreshIndicator(
-        color: AppColors.brand,
-        onRefresh: () => ref.refresh(healthSeriesProvider.future),
-        child: ListView(
-          padding: EdgeInsets.only(
-            top: AppSpacing.space1,
-            bottom: MainShell.bottomInsetFor(context),
+    // The green wash behind this screen is painted by `MainShell`, outside the
+    // safe area, so it reaches behind the status bar.
+    return RefreshIndicator(
+      color: AppColors.brand,
+      onRefresh: () => ref.refresh(healthSeriesProvider.future),
+      child: ListView(
+        padding: EdgeInsets.only(
+          top: AppSpacing.space1,
+          bottom: MainShell.bottomInsetFor(context),
+        ),
+        children: [
+          // HEADER
+          _Header(
+            date: DateFormat('EEEE, d MMMM').format(DateTime.now()),
+            synced: synced,
+            greeting: _greeting(),
+            refreshing: loading,
+            onRefresh: () => ref.invalidate(healthSeriesProvider),
+            onSettings: () =>
+                ref.read(mainTabProvider.notifier).select(MainTab.settings),
           ),
-          children: [
-            // HEADER
-            _Header(
-              date: DateFormat('EEEE, d MMMM').format(DateTime.now()),
-              synced: synced,
-              greeting: _greeting(),
-              refreshing: loading,
-              onRefresh: () => ref.invalidate(healthSeriesProvider),
-              onSettings: () =>
-                  ref.read(mainTabProvider.notifier).select(MainTab.settings),
-            ),
 
-            // URGENT — the one thing that outranks readiness. Tappable, because a
-            // "see a clinician" banner that goes nowhere is the one dead end on
-            // this screen a user would actually try to follow.
-            if (urgentCount > 0)
-              _Section(
-                delay: 0,
-                child: _UrgentBanner(
-                  count: urgentCount,
-                  onTap: () => ref
-                      .read(mainTabProvider.notifier)
-                      .select(MainTab.insights),
-                ),
-              ),
-
-            // MORNING BRIEF — the composed plan. Above readiness because the score
-            // is an input to it, and a user who reads one thing should read the
-            // plan, not the number.
-            //
-            // Rendered even before a plan exists: a section that vanishes reads
-            // as a broken screen, where an empty one reads as "not yet".
+          // URGENT — the one thing that outranks readiness. Tappable, because a
+          // "see a clinician" banner that goes nowhere is the one dead end on
+          // this screen a user would actually try to follow.
+          if (urgentCount > 0)
             _Section(
-              delay: 20,
-              child: _BriefCard(
-                headline: brief?.headline ?? briefTeaser,
-                detail: brief == null
-                    ? null
-                    : '${brief.workout.title} · ${brief.foodFocus.title}',
+              delay: 0,
+              child: _UrgentBanner(
+                count: urgentCount,
                 onTap: () =>
-                    MainShell.push(context, const MorningBriefScreen()),
+                    ref.read(mainTabProvider.notifier).select(MainTab.insights),
               ),
             ),
 
-            // HERO
-            _Section(
-              delay: 40,
-              child: loading && metrics == null
-                  ? const Skeleton(height: 248)
-                  : ReadinessHero(
-                      readiness: readiness,
-                      fallbackHint:
-                          'Keep wearing your watch — seven days of data unlocks '
-                          'your score.',
-                      onTap: () => ref
-                          .read(mainTabProvider.notifier)
-                          .select(MainTab.insights),
-                    ),
+          // MORNING BRIEF — the composed plan. Above readiness because the score
+          // is an input to it, and a user who reads one thing should read the
+          // plan, not the number.
+          //
+          // Rendered even before a plan exists: a section that vanishes reads
+          // as a broken screen, where an empty one reads as "not yet".
+          _Section(
+            delay: 20,
+            child: _BriefCard(
+              headline: brief?.headline ?? briefTeaser,
+              detail: brief == null
+                  ? null
+                  : '${brief.workout.title} · ${brief.foodFocus.title}',
+              onTap: () => MainShell.push(context, const MorningBriefScreen()),
             ),
+          ),
 
-            // PRIMARY SIGNALS — HRV and resting HR carry 65% of readiness.
-            _Section(
-              delay: 120,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SectionHeader(
-                    title: 'Your signals',
-                    actionLabel: series == null
-                        ? null
-                        : '${series.length} days',
-                    onAction: series == null
-                        ? null
-                        : () => ref.invalidate(healthSeriesProvider),
+          // HERO
+          _Section(
+            delay: 40,
+            child: loading && metrics == null
+                ? const Skeleton(height: 248)
+                : ReadinessHero(
+                    readiness: readiness,
+                    fallbackHint:
+                        'Keep wearing your watch — seven days of data unlocks '
+                        'your score.',
+                    onTap: () => ref
+                        .read(mainTabProvider.notifier)
+                        .select(MainTab.insights),
                   ),
-                  if (metrics == null)
-                    const Column(
-                      spacing: 10,
-                      children: [
-                        Row(
-                          spacing: 10,
-                          children: [
-                            Expanded(child: Skeleton(height: 150)),
-                            Expanded(child: Skeleton(height: 150)),
-                          ],
-                        ),
-                        Skeleton(height: 84, radius: AppRadius.md),
-                      ],
-                    )
-                  else
-                    Column(
-                      spacing: 10,
-                      children: [
-                        Row(
-                          spacing: 10,
-                          children: [
-                            for (final key in const [
-                              MetricKey.hrv,
-                              MetricKey.restingHeartRate,
-                            ])
-                              Expanded(
-                                child: StatTile(
-                                  stats: metrics[key]!,
-                                  onTap: () => _openMetric(context, key),
-                                ),
-                              ),
-                          ],
-                        ),
-                        Row(
-                          spacing: AppSpacing.space2,
-                          children: [
-                            for (final key in const [
-                              MetricKey.sleepDuration,
-                              MetricKey.sleepEfficiency,
-                              MetricKey.steps,
-                              MetricKey.activeEnergy,
-                            ])
-                              Expanded(
-                                child: SignalChip(
-                                  stats: metrics[key]!,
-                                  onTap: () => _openMetric(context, key),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
+          ),
 
-            // FUEL — today's intake against today's target, and the way into the
-            // restaurant picker. Shown with a dashed-out target rather than
-            // hidden when there is nothing to compare against: what is logged is
-            // known either way, and the row is the way into the food log.
-            _Section(
-              delay: 160,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SectionHeader(
-                    title: 'Fuel',
-                    actionLabel: 'Log a meal',
-                    onAction: () =>
-                        MainShell.push(context, const LogMealScreen()),
-                  ),
-                  _FuelCard(
-                    caloriesConsumed: consumed.calories,
-                    caloriesTarget: targets?.calories,
-                    proteinConsumed: consumed.proteinG,
-                    proteinTarget: targets?.macros.proteinG,
-                    remaining: remaining,
-                    isCheatDay: targets?.isCheatDay ?? false,
-                    // Height and weight are assumed when absent; age is the one
-                    // input nothing can stand in for, so it is what to ask for.
-                    noTargetHint: profile.ageYears == null
-                        ? 'Add your age in Settings for a daily target'
-                        : 'No daily target yet',
-                    onOpenFood: () =>
-                        ref.read(mainTabProvider.notifier).select(MainTab.food),
-                    onOpenDining: () =>
-                        MainShell.push(context, const DiningScreen()),
-                  ),
-                ],
-              ),
-            ),
-
-            // HEADLINE FINDING — the product's differentiator.
-            _Section(
-              delay: 200,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SectionHeader(
-                    title: 'What we found',
-                    count: insights.length,
-                    actionLabel: insights.length > 1 ? 'See all' : null,
-                    onAction: insights.length > 1
-                        ? () => ref
-                              .read(mainTabProvider.notifier)
-                              .select(MainTab.insights)
-                        : null,
-                  ),
-                  if (loading && metrics == null)
-                    const Skeleton(height: 168)
-                  else if (headline != null)
-                    HeadlineInsight(
-                      insight: headline,
-                      onTap: () => ref
-                          .read(mainTabProvider.notifier)
-                          .select(MainTab.insights),
-                    )
-                  else
-                    _NoFindings(hasLabData: hasLabData),
-                ],
-              ),
-            ),
-
-            // ACTIONS — a vertical list, nothing hidden behind a swipe.
-            _Section(
-              delay: 280,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SectionHeader(
-                    title: 'Do this today',
-                    count: actions.length,
-                  ),
-                  if (actions.isEmpty)
-                    const _EmptyRow(
-                      icon: Icons.check_circle_outline,
-                      text: 'Nothing queued — actions appear here as findings '
-                          'do.',
-                    )
-                  else
-                    SurfaceCard(
-                      padded: false,
-                      child: Column(
+          // PRIMARY SIGNALS — HRV and resting HR carry 65% of readiness.
+          _Section(
+            delay: 120,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  title: 'Your signals',
+                  actionLabel: series == null ? null : '${series.length} days',
+                  onAction: series == null
+                      ? null
+                      : () => ref.invalidate(healthSeriesProvider),
+                ),
+                if (metrics == null)
+                  const Column(
+                    spacing: 10,
+                    children: [
+                      Row(
+                        spacing: 10,
                         children: [
-                          for (final entry in actions)
-                            ActionRow(
-                              suggestion: entry.suggestion,
-                              source: entry.source,
-                              isLast: entry == actions.last,
-                              onTap: () => ref
-                                  .read(mainTabProvider.notifier)
-                                  .select(MainTab.insights),
+                          Expanded(child: Skeleton(height: 150)),
+                          Expanded(child: Skeleton(height: 150)),
+                        ],
+                      ),
+                      Skeleton(height: 84, radius: AppRadius.md),
+                    ],
+                  )
+                else
+                  Column(
+                    spacing: 10,
+                    children: [
+                      Row(
+                        spacing: 10,
+                        children: [
+                          for (final key in const [
+                            MetricKey.hrv,
+                            MetricKey.restingHeartRate,
+                          ])
+                            Expanded(
+                              child: StatTile(
+                                stats: metrics[key]!,
+                                onTap: () => _openMetric(context, key),
+                              ),
                             ),
                         ],
                       ),
-                    ),
-                ],
-              ),
-            ),
-
-            // LAB STATUS — keeps the correlation half of the product alive.
-            _Section(
-              delay: 340,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SectionHeader(
-                    title: 'Blood work',
-                    actionLabel: report != null ? 'Open latest' : 'Add report',
-                    onAction: openLatestReportOrUpload,
+                      Row(
+                        spacing: AppSpacing.space2,
+                        children: [
+                          for (final key in const [
+                            MetricKey.sleepDuration,
+                            MetricKey.sleepEfficiency,
+                            MetricKey.steps,
+                            MetricKey.activeEnergy,
+                          ])
+                            Expanded(
+                              child: SignalChip(
+                                stats: metrics[key]!,
+                                onTap: () => _openMetric(context, key),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
-                  LabStatusCard(
-                    report: report,
-                    flaggedCount: flaggedCount,
-                    onTap: openLatestReportOrUpload,
-                  ),
-                ],
-              ),
+              ],
             ),
+          ),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space8 + AppSpacing.space2,
-                AppSpacing.space6,
-                AppSpacing.space8 + AppSpacing.space2,
-                0,
-              ),
-              child: Text(
-                // Never let sample telemetry read as the user's own.
-                syntheticData
-                    ? 'Showing a sample 35-day telemetry series — connect Apple '
-                          'Health for your own. Not medical advice, and not a '
-                          'diagnosis.'
-                    : 'Statistical associations in your own data — not medical '
-                          'advice, and not a diagnosis.',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.cardMeta.copyWith(
-                  fontSize: 10,
-                  height: 1.5,
+          // FUEL — today's intake against today's target, and the way into the
+          // restaurant picker. Shown with a dashed-out target rather than
+          // hidden when there is nothing to compare against: what is logged is
+          // known either way, and the row is the way into the food log.
+          _Section(
+            delay: 160,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  title: 'Fuel',
+                  actionLabel: 'Log a meal',
+                  onAction: () =>
+                      MainShell.push(context, const LogMealScreen()),
                 ),
-              ),
+                _FuelCard(
+                  caloriesConsumed: consumed.calories,
+                  caloriesTarget: targets?.calories,
+                  proteinConsumed: consumed.proteinG,
+                  proteinTarget: targets?.macros.proteinG,
+                  remaining: remaining,
+                  isCheatDay: targets?.isCheatDay ?? false,
+                  // Height and weight are assumed when absent; age is the one
+                  // input nothing can stand in for, so it is what to ask for.
+                  noTargetHint: profile.ageYears == null
+                      ? 'Add your age in Settings for a daily target'
+                      : 'No daily target yet',
+                  onOpenFood: () =>
+                      ref.read(mainTabProvider.notifier).select(MainTab.food),
+                  onOpenDining: () =>
+                      MainShell.push(context, const DiningScreen()),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+
+          // HEADLINE FINDING — the product's differentiator.
+          _Section(
+            delay: 200,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  title: 'What we found',
+                  count: insights.length,
+                  actionLabel: insights.length > 1 ? 'See all' : null,
+                  onAction: insights.length > 1
+                      ? () => ref
+                            .read(mainTabProvider.notifier)
+                            .select(MainTab.insights)
+                      : null,
+                ),
+                if (loading && metrics == null)
+                  const Skeleton(height: 168)
+                else if (headline != null)
+                  HeadlineInsight(
+                    insight: headline,
+                    onTap: () => ref
+                        .read(mainTabProvider.notifier)
+                        .select(MainTab.insights),
+                  )
+                else
+                  _NoFindings(hasLabData: hasLabData),
+              ],
+            ),
+          ),
+
+          // ACTIONS — a vertical list, nothing hidden behind a swipe.
+          _Section(
+            delay: 280,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(title: 'Do this today', count: actions.length),
+                if (actions.isEmpty)
+                  const _EmptyRow(
+                    icon: Icons.check_circle_outline,
+                    text:
+                        'Nothing queued right now — as new findings appear, '
+                        'we will place the next best action here.',
+                  )
+                else
+                  SurfaceCard(
+                    padded: false,
+                    child: Column(
+                      children: [
+                        for (final entry in actions)
+                          ActionRow(
+                            suggestion: entry.suggestion,
+                            source: entry.source,
+                            isLast: entry == actions.last,
+                            onTap: () => ref
+                                .read(mainTabProvider.notifier)
+                                .select(MainTab.insights),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // LAB STATUS — keeps the correlation half of the product alive.
+          _Section(
+            delay: 340,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  title: 'Blood work',
+                  actionLabel: report != null ? 'Open latest' : 'Add report',
+                  onAction: openLatestReportOrUpload,
+                ),
+                LabStatusCard(
+                  report: report,
+                  flaggedCount: flaggedCount,
+                  onTap: openLatestReportOrUpload,
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space8 + AppSpacing.space2,
+              AppSpacing.space6,
+              AppSpacing.space8 + AppSpacing.space2,
+              0,
+            ),
+            child: Text(
+              // Never let sample telemetry read as the user's own.
+              syntheticData
+                  ? 'Showing a sample 35-day telemetry series — connect Apple '
+                        'Health for your own. Not medical advice, and not a '
+                        'diagnosis.'
+                  : 'Statistical associations in your own data — not medical '
+                        'advice, and not a diagnosis.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.cardMeta.copyWith(fontSize: 10, height: 1.5),
+            ),
+          ),
+        ],
       ),
     );
   }

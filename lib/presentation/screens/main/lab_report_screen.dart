@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -244,6 +245,7 @@ class LabReportScreen extends ConsumerWidget {
 
     if (confirmed != true) return;
 
+    HapticFeedback.mediumImpact();
     await ref.read(labsProvider.notifier).remove(report.id);
     if (context.mounted) Navigator.of(context).maybePop();
   }

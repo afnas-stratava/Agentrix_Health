@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -194,7 +195,10 @@ class _MetricPill extends StatelessWidget {
         color: selected ? AppColors.brand50 : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
           borderRadius: BorderRadius.circular(AppRadius.pill),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

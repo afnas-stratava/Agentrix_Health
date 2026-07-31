@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -464,7 +465,12 @@ class _MealRow extends ConsumerWidget {
       label: '${meal.slot.label}: ${meal.summary}',
       hint: 'Long press to remove',
       child: InkWell(
-        onLongPress: () => _confirmRemove(context, ref),
+        onLongPress: () {
+          // Acknowledge the gesture before the dialog: a long press that
+          // appears to do nothing for 300ms reads as an unresponsive row.
+          HapticFeedback.mediumImpact();
+          _confirmRemove(context, ref);
+        },
         child: Container(
           decoration: BoxDecoration(
             border: isLast

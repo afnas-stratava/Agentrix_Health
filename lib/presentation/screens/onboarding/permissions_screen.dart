@@ -59,9 +59,12 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
   @override
   Widget build(BuildContext context) {
     return OnboardingScaffold(
+      stepIndex: 5,
+      stepCount: 6,
       title: 'Connect Apple Health',
-      intro: 'We read five metrics, and we only read — Agentrix Health requests '
-          'no permission to write anything back to Health.',
+      intro:
+          'We read five metrics and only read them. We never write back to '
+          'Apple Health, and you can skip this step and continue later.',
       continueLabel: _requesting
           ? 'Asking Apple Health…'
           : 'Connect Apple Health',

@@ -50,8 +50,11 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
               2;
 
     return OnboardingScaffold(
+      stepIndex: 3,
+      stepCount: 6,
       title: 'What are you working towards?',
-      intro: 'This sets your calorie offset and how much protein we hold you '
+      intro:
+          'This sets your calorie offset and how much protein we hold you '
           'to. You can change it any time.',
       onContinue: () {
         final notifier = ref.read(userProfileProvider.notifier);
@@ -86,7 +89,8 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
 
         const OnboardingLabel(
           'Anything you are managing?',
-          detail: 'Optional. If you pick something here we tighten the relevant '
+          detail:
+              'Optional. If you pick something here we tighten the relevant '
               'targets — carbohydrate share for glucose, sugar and sodium '
               'ceilings — and factor it into food recommendations. We do not '
               'treat it as a diagnosis.',

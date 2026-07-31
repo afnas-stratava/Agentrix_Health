@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -50,7 +51,10 @@ class SelectableChip extends StatelessWidget {
       color: background,
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
         borderRadius: BorderRadius.circular(999),
         child: Container(
           padding: EdgeInsets.only(
@@ -96,7 +100,10 @@ class SelectableChip extends StatelessWidget {
               ),
               if (onRemove != null)
                 InkWell(
-                  onTap: onRemove,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    onRemove!();
+                  },
                   borderRadius: BorderRadius.circular(999),
                   child: Icon(Icons.close, size: 14, color: foreground),
                 ),

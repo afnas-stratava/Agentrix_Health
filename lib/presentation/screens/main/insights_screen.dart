@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -397,7 +398,10 @@ class _InsightCardState extends ConsumerState<InsightCard> {
                     button: true,
                     label: _expanded ? 'Hide details' : 'Show what to do',
                     child: InkWell(
-                      onTap: () => setState(() => _expanded = !_expanded),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _expanded = !_expanded);
+                      },
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         spacing: 6,
@@ -476,8 +480,10 @@ class _DismissButton extends ConsumerWidget {
       label: 'Dismiss insight',
       child: InkWell(
         customBorder: const CircleBorder(),
-        onTap: () =>
-            ref.read(settingsProvider.notifier).dismissInsight(insight.id),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          ref.read(settingsProvider.notifier).dismissInsight(insight.id);
+        },
         child: Container(
           width: 28,
           height: 28,
@@ -753,10 +759,13 @@ class _CitationLink extends StatelessWidget {
       child: Semantics(
         link: true,
         child: InkWell(
-          onTap: () => launchUrl(
-            Uri.parse(citation.url),
-            mode: LaunchMode.externalApplication,
-          ),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            launchUrl(
+              Uri.parse(citation.url),
+              mode: LaunchMode.externalApplication,
+            );
+          },
           child: Row(
             mainAxisSize: MainAxisSize.min,
             spacing: 6,

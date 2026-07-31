@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../theme/app_colors.dart';
@@ -55,7 +56,10 @@ class DayStrip extends StatelessWidget {
               color: isSelected ? AppColors.ink : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadius.pill),
               child: InkWell(
-                onTap: () => onSelect(day),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onSelect(day);
+                },
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: Container(
                   alignment: Alignment.center,

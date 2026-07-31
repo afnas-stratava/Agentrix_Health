@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_shadows.dart';
@@ -91,7 +92,13 @@ class AppCard extends StatelessWidget {
       color: Colors.transparent,
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
-      child: InkWell(onTap: onTap, child: card),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap!();
+        },
+        child: card,
+      ),
     );
   }
 }

@@ -26,8 +26,11 @@ class DietScreen extends ConsumerWidget {
     final cuisineCount = profile.cuisines.length;
 
     return OnboardingScaffold(
+      stepIndex: 4,
+      stepCount: 6,
       title: 'How do you eat?',
-      intro: 'Nothing we recommend — a meal, a dish, a restaurant — will ever '
+      intro:
+          'Nothing we recommend — a meal, a dish, a restaurant — will ever '
           'contradict what you set here.',
       footerNote: cuisineCount == 0
           ? 'Skipping cuisines is fine — recommendations will just be less '
@@ -46,7 +49,8 @@ class DietScreen extends ConsumerWidget {
         const OnboardingLabel(
           'Allergies',
           icon: Icons.shield_outlined,
-          detail: 'Anything selected here is excluded outright, everywhere in '
+          detail:
+              'Anything selected here is excluded outright, everywhere in '
               'the app.',
         ),
         choice.ChipGroup(
@@ -63,7 +67,8 @@ class DietScreen extends ConsumerWidget {
 
         const OnboardingLabel(
           'Preferences',
-          detail: 'Softer than an allergy — these push options down the list '
+          detail:
+              'Softer than an allergy — these push options down the list '
               'rather than removing them.',
         ),
         choice.ChipGroup(
@@ -79,7 +84,8 @@ class DietScreen extends ConsumerWidget {
 
         const OnboardingLabel(
           'Cuisines you eat most',
-          detail: 'Tap in order of preference — the first one you pick carries '
+          detail:
+              'Tap in order of preference — the first one you pick carries '
               'the most weight when we suggest somewhere to eat.',
         ),
         choice.ChipGroup(

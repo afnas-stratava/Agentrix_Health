@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -62,7 +63,10 @@ class SectionHeader extends StatelessWidget {
           ),
           if (actionLabel != null && onAction != null)
             InkWell(
-              onTap: onAction,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onAction!();
+              },
               borderRadius: BorderRadius.circular(AppRadius.pill),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
