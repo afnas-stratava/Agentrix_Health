@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// flow most people abandon.
 enum AppStage {
   welcome,
+  account,
   sex,
   body,
   goals,
@@ -20,7 +21,8 @@ enum AppStage {
 
   /// The step after this one. `main` is terminal.
   AppStage get next => switch (this) {
-    AppStage.welcome => AppStage.sex,
+    AppStage.welcome => AppStage.account,
+    AppStage.account => AppStage.sex,
     AppStage.sex => AppStage.body,
     AppStage.body => AppStage.goals,
     AppStage.goals => AppStage.diet,
@@ -30,7 +32,8 @@ enum AppStage {
 
   /// The step before this one. `welcome` is the first.
   AppStage get previous => switch (this) {
-    AppStage.welcome || AppStage.sex => AppStage.welcome,
+    AppStage.welcome || AppStage.account => AppStage.welcome,
+    AppStage.sex => AppStage.account,
     AppStage.body => AppStage.sex,
     AppStage.goals => AppStage.body,
     AppStage.diet => AppStage.goals,

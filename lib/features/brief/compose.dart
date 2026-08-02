@@ -239,7 +239,7 @@ class ComposeInput {
     detail =
         'Your ${glucose.displayName.toLowerCase()} is '
         '${glucose.valueWithUnit}. Eating the protein and vegetables on the '
-        'plate before the rice or roti measurably flattens the glucose '
+        'plate before the rice or bread measurably flattens the glucose '
         'response to the same meal.';
     tags = [FoodTag.highProtein, FoodTag.highFibre, FoodTag.lowCarb];
     drivers.add(
@@ -256,7 +256,7 @@ class ComposeInput {
     title = 'Soluble fibre and unsaturated fat';
     detail =
         'Your ${lipids.displayName.toLowerCase()} is ${lipids.valueWithUnit}. '
-        'Oats, dal, chana and nuts move this; swapping fried food for grilled '
+        'Oats, beans, lentils and nuts move this; swapping fried food for grilled '
         'moves it faster.';
     tags = [FoodTag.highFibre, FoodTag.wholegrain, FoodTag.omega3Rich];
     drivers.add(
@@ -355,8 +355,8 @@ class ComposeInput {
                     null,
           )
           .toList()
-        // Prefer the user's own cuisines, so "iron-rich" surfaces palak paneer
-        // rather than a spinach salad they will never eat.
+        // Prefer the user's own cuisines, so "iron-rich" surfaces a turkey
+        // chili or pot roast rather than a spinach salad they will never eat.
         ..sort((a, b) {
           int rank(FoodDefinition item) {
             if (item.cuisine == null) return 99;

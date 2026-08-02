@@ -271,8 +271,8 @@ WeeklyNutritionSummary analyseWeek({
         title: 'Fibre low on ${lowFibreDays.length} of $n ${plural(n)}',
         detail:
             '${averages.fibreG.round()} g a day against a '
-            '${targets.macros.fibreG} g target. Dal, chana, or swapping white '
-            'rice for brown moves this fastest.',
+            '${targets.macros.fibreG} g target. Beans, lentils, or swapping '
+            'white rice for brown moves this fastest.',
         daysAffected: lowFibreDays.length,
         daysConsidered: n,
         tone: PatternTone.concern,

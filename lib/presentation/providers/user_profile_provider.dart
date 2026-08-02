@@ -19,11 +19,17 @@ class UserProfileNotifier extends Notifier<UserProfile> {
   @override
   UserProfile build() {
     ref.onDispose(() => _persistDebounce?.cancel());
-    unawaited(_hydrate());
+    unawaited(hydrate());
     return UserProfile.initial();
   }
 
-  Future<void> _hydrate() async {
+  /// Loads the profile stored against the *current* uid.
+  ///
+  /// Public because the uid changes under this notifier: signing into an
+  /// account that already exists elsewhere swaps the uid, and without a
+  /// re-read the screen would keep showing whatever the previous session had
+  /// in memory until the next app launch.
+  Future<void> hydrate() async {
     try {
       final uid = await ensureSignedIn(ref);
       if (uid == null) return;
@@ -34,7 +40,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
       // auth not set up yet, tests), the UI should keep working from local
       // state rather than surface this. Every write retries sign-in, so
       // fixing the underlying issue heals this without an app restart.
-      debugPrint('UserProfileNotifier._hydrate failed: $error');
+      debugPrint('UserProfileNotifier.hydrate failed: $error');
     }
   }
 
@@ -76,6 +82,11 @@ class UserProfileNotifier extends Notifier<UserProfile> {
 
   void setGoal(HealthGoal goal) {
     state = state.copyWith(goal: goal);
+    _persistNow();
+  }
+
+  void setPhotoUrl(String url) {
+    state = state.copyWith(photoUrl: url);
     _persistNow();
   }
 

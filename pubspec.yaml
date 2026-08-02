@@ -63,6 +63,10 @@ dependencies:
   # Opens the clinical references cited by an insight, as `Linking.openURL`
   # does in the React Native build.
   url_launcher: ^6.3.1
+  sign_in_with_apple: ^8.1.0
+  google_sign_in: ^7.2.0
+  crypto: ^3.0.7
+  google_generative_ai: ^0.4.7
 
 # Build workaround, not a preference — remove once Xcode ships the iOS 26.1 SDK.
 #

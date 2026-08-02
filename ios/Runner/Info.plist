@@ -30,10 +30,14 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Agentrix Health uses the camera to photograph a printed lab report or a meal.</string>
+	<!-- Read-only. `NSHealthUpdateUsageDescription` is deliberately absent:
+	     HealthKitHealthProvider requests HealthDataAccess.READ for every type
+	     and the app never writes a sample. Declaring write access it does not
+	     use would prompt the user for a permission that goes unexercised,
+	     which App Review treats as a purpose-string mismatch. Add the key back
+	     in the same commit that adds the first write. -->
 	<key>NSHealthShareUsageDescription</key>
 	<string>Agentrix Health reads your heart-rate variability, resting heart rate, sleep and activity to score your daily readiness and to correlate it with your blood work.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Agentrix Health writes workouts and logged cycle days back to Apple Health so your other apps stay in sync.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Find restaurants near you and rank dishes that fit today's plan. Your location is used for the search and never stored.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -59,6 +63,48 @@
 			</array>
 		</dict>
 	</dict>
+	<!-- Makes the app a destination in the iOS share sheet for lab documents.
+	     This is the provider-agnostic import path: Mail.app covers iCloud,
+	     Gmail, Outlook, Yahoo and any IMAP account, and the Gmail and Outlook
+	     apps expose the same sheet, so one declaration reaches every mail
+	     provider with no OAuth scope, no verification and no user cap.
+
+	     `LSSupportsOpeningDocumentsInPlace` is false deliberately: the system
+	     hands over a copy in Documents/Inbox rather than a live reference to
+	     the original. The copy is ours to delete once parsed, which is what we
+	     want for a file containing someone's blood work. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Lab report</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.adobe.pdf</string>
+				<string>public.image</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
+	<!-- Google Sign-In returns to the app through this scheme. It is the
+	     REVERSED_CLIENT_ID from GoogleService-Info.plist and has to stay in
+	     step with it: registering a new Firebase iOS app issues a new OAuth
+	     client, and a stale scheme here means the consent screen opens and
+	     never comes back. See docs/AUTH_SETUP.md. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.368943821492-bi43h31p6akhhbhgslphn91f4mtc2q7t</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

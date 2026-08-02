@@ -8,16 +8,16 @@ import '../cuisine_preference.dart';
 /// user but two menus for a ranker, because a tiffin room and a tandoori grill
 /// share almost no dishes.
 enum Cuisine {
+  american('american', 'American'),
+  continental('continental', 'Continental'),
+  mexican('mexican', 'Mexican'),
+  mediterranean('mediterranean', 'Mediterranean'),
   northIndian('north-indian', 'North Indian'),
   southIndian('south-indian', 'South Indian'),
-  mediterranean('mediterranean', 'Mediterranean'),
   middleEastern('middle-eastern', 'Middle Eastern'),
   eastAsian('east-asian', 'East Asian'),
   japanese('japanese', 'Japanese'),
-  thai('thai', 'Thai'),
-  mexican('mexican', 'Mexican'),
-  american('american', 'American'),
-  continental('continental', 'Continental');
+  thai('thai', 'Thai');
 
   const Cuisine(this.wireName, this.label);
 

@@ -15,16 +15,20 @@ void main() async {
   // shows through.
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  // Firebase is used for background sync only (see UserProfileNotifier) —
-  // nothing on the golden path requires it, so a misconfigured project,
-  // offline device, etc. must not block the app from launching at all.
+  // Sign-in is on the golden path now (AppStage.account sits second in
+  // onboarding), so Firebase is no longer optional. It is still initialized
+  // inside a try/catch: a misconfigured project or an offline first launch
+  // should surface as an error the user can read at the account gate, not as
+  // a crash before the first frame.
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    // No sign-up flow yet — anonymous auth just gives each install a stable
-    // uid so per-user data (e.g. the health profile) has somewhere to live.
-    // Swap this out once a real auth feature lands.
+    // The anonymous uid is the pre-sign-in identity, not a substitute for one:
+    // per-user data written during onboarding hangs off it, and
+    // AccountController *links* the Apple or Google credential onto this same
+    // uid so none of it is stranded. Removing this would orphan every profile
+    // written before the user reaches the account step.
     if (FirebaseAuth.instance.currentUser == null) {
       await FirebaseAuth.instance.signInAnonymously();
     }

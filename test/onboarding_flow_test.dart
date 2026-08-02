@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:agentrix_health/app.dart';
 import 'package:agentrix_health/core/widgets/choice.dart' as choice;
+import 'package:agentrix_health/presentation/providers/account_provider.dart';
 
 /// Covers RN's six-step onboarding flow (`app/onboarding/*`).
 ///
@@ -49,18 +50,35 @@ String? rankOf(WidgetTester tester, String label) {
   return texts.isEmpty ? null : texts.first;
 }
 
+/// Signing in is mandatory, and there is no Firebase project in a widget test,
+/// so the session is stubbed as already signed in. Without this every flow test
+/// stops at the gate — which is the gate working, and is covered directly in
+/// `account_screen_test.dart`.
 Future<void> _launch(WidgetTester tester) async {
-  await tester.pumpWidget(const ProviderScope(child: AgentrixHealthApp()));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        accountStatusProvider.overrideWithValue(
+          const AccountStatus(
+            kind: SessionKind.account,
+            email: 'tester@example.com',
+          ),
+        ),
+      ],
+      child: const AgentrixHealthApp(),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
-/// Welcome → sex.
+/// Welcome → account → sex.
 Future<void> _openSexStep(WidgetTester tester) async {
   await _launch(tester);
   await tapItem(tester, 'Get started');
+  await tapItem(tester, 'Continue');
 }
 
-/// Welcome → sex → body.
+/// Welcome → account → sex → body.
 Future<void> _openBodyStep(WidgetTester tester) async {
   await _openSexStep(tester);
   await tapItem(tester, 'Female');
@@ -86,11 +104,7 @@ Future<void> _openDietStep(WidgetTester tester) async {
 
 void main() {
   group('layout', () {
-    for (final size in const [
-      Size(430, 960),
-      Size(360, 640),
-      Size(320, 568),
-    ]) {
+    for (final size in const [Size(430, 960), Size(360, 640), Size(320, 568)]) {
       testWidgets('welcome renders without overflow at $size', (tester) async {
         await tester.binding.setSurfaceSize(size);
         addTearDown(() => tester.binding.setSurfaceSize(null));

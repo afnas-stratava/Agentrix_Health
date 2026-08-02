@@ -12,7 +12,20 @@
           "package_name": "com.example.agentrix_health"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "368943821492-e2dn0fgi0oluucflmi70jcdan1dnpjmb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.agentrix_health",
+            "certificate_hash": "80877e3f21f6ed3eceb22e8dfb2704292d0c648e"
+          }
+        },
+        {
+          "client_id": "368943821492-ilqu1s9fr9ktktjlv3gjfdso2eh0umta.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB4OrGJfRcOIfTy1g7yncRXT-HH9NiSHrQ"
@@ -20,7 +33,55 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "368943821492-ilqu1s9fr9ktktjlv3gjfdso2eh0umta.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "368943821492-bi43h31p6akhhbhgslphn91f4mtc2q7t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.stratava.agentrixhealth"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:368943821492:android:6a58e0c7d41a099cd15de1",
+        "android_client_info": {
+          "package_name": "com.stratava.agentrixhealth"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "368943821492-ilqu1s9fr9ktktjlv3gjfdso2eh0umta.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4OrGJfRcOIfTy1g7yncRXT-HH9NiSHrQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "368943821492-ilqu1s9fr9ktktjlv3gjfdso2eh0umta.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "368943821492-bi43h31p6akhhbhgslphn91f4mtc2q7t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.stratava.agentrixhealth"
+              }
+            }
+          ]
         }
       }
     }

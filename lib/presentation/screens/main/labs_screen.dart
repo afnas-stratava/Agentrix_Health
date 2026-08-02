@@ -14,6 +14,7 @@ import '../../../domain/entities/labs/biomarker.dart';
 import '../../../domain/entities/labs/lab_report.dart';
 import '../../providers/insights_providers.dart';
 import '../../providers/labs_providers.dart';
+import '../../widgets/labs/ai_scan_progress.dart';
 import '../../widgets/labs/biomarker_range_row.dart';
 import 'gmail_import_screen.dart';
 import 'lab_report_screen.dart';
@@ -30,7 +31,8 @@ class LabsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final reports = ref.watch(labsProvider).reports;
+    final labs = ref.watch(labsProvider);
+    final reports = labs.reports;
     final flagged =
         ref
             .watch(mergedBiomarkersProvider)
@@ -90,6 +92,17 @@ class LabsScreen extends ConsumerWidget {
           ),
         ),
 
+        if (labs.parsing)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space6,
+              AppSpacing.space6,
+              AppSpacing.space6,
+              0,
+            ),
+            child: const AiScanProgress(),
+          ),
+
         if (flagged.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -138,7 +151,7 @@ class LabsScreen extends ConsumerWidget {
                   ),
                 ),
 
-              if (reports.isEmpty)
+              if (reports.isEmpty && !labs.parsing)
                 EmptyState(
                   icon: Icons.science_outlined,
                   title: 'No blood work yet',

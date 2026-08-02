@@ -57,18 +57,19 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyB4OrGJfRcOIfTy1g7yncRXT-HH9NiSHrQ',
-    appId: '1:368943821492:android:8fd5ef129bdb60d8d15de1',
+    appId: '1:368943821492:android:6a58e0c7d41a099cd15de1',
     messagingSenderId: '368943821492',
     projectId: 'agentrix-health-70a12',
     storageBucket: 'agentrix-health-70a12.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCAHBjoKBKFydljYGU7yf13CX20-M5ZNHQ',
-    appId: '1:368943821492:ios:0878db2ba60ca5efd15de1',
+    appId: '1:368943821492:ios:3d545096e4564a42d15de1',
     messagingSenderId: '368943821492',
     projectId: 'agentrix-health-70a12',
     storageBucket: 'agentrix-health-70a12.firebasestorage.app',
-    iosBundleId: 'com.example.agentrixHealth',
+    androidClientId: '368943821492-e2dn0fgi0oluucflmi70jcdan1dnpjmb.apps.googleusercontent.com',
+    iosClientId: '368943821492-bi43h31p6akhhbhgslphn91f4mtc2q7t.apps.googleusercontent.com',
+    iosBundleId: 'com.stratava.agentrixhealth',
   );
 }

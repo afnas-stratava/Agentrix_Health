@@ -5,4 +5,8 @@ abstract interface class UserProfileRepository {
   Future<UserProfile?> fetch(String uid);
 
   Future<void> save(String uid, UserProfile profile);
+
+  /// Removes the stored profile. Used by account deletion, which must leave
+  /// nothing of the user behind in the cloud.
+  Future<void> delete(String uid);
 }

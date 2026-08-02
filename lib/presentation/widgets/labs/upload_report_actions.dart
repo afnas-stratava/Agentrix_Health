@@ -9,6 +9,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../domain/entities/labs/lab_report.dart';
 import '../../providers/labs_providers.dart';
+import 'ai_scan_progress.dart';
 
 /// The three real ways to get a report in, plus the sample.
 ///
@@ -25,7 +26,7 @@ class UploadReportActions extends ConsumerWidget {
     final labs = ref.watch(labsProvider);
 
     if (labs.parsing) {
-      return const _ParsingState();
+      return const AiScanProgress();
     }
 
     return Column(
@@ -153,48 +154,5 @@ class UploadReportActions extends ConsumerWidget {
   Future<void> _submit(WidgetRef ref, LabUpload upload) async {
     final report = await ref.read(labsProvider.notifier).upload(upload);
     if (report != null) onUploaded?.call(report);
-  }
-}
-
-class _ParsingState extends StatelessWidget {
-  const _ParsingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space4,
-        vertical: AppSpacing.space6,
-      ),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.brand200),
-        color: AppColors.brand50,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Column(
-        children: [
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.brand,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.space3),
-          Text(
-            'Reading your report…',
-            style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            'Extracting markers, converting units and flagging each value '
-            'against its reference range.',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.cardBody.copyWith(height: 1.45),
-          ),
-        ],
-      ),
-    );
   }
 }

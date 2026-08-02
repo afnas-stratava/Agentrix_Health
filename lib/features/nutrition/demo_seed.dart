@@ -30,55 +30,58 @@ class _SeedMeal {
 /// Day 0 is today. Sugar-heavy days are 1, 3, 4 and 6 days ago.
 const Map<int, List<_SeedMeal>> _week = {
   6: [
-    _SeedMeal(MealSlot.breakfast, 8, ['idli', 'sambar', 'filter-coffee']),
-    _SeedMeal(MealSlot.lunch, 13, ['dal-tadka', 'roti', 'mixed-sabzi']),
-    _SeedMeal(MealSlot.snack, 17, ['masala-chai', 'gulab-jamun']),
-    _SeedMeal(MealSlot.dinner, 20, ['chicken-tikka', 'greek-salad']),
+    _SeedMeal(MealSlot.breakfast, 8, [
+      'scrambled-eggs',
+      'turkey-bacon',
+      'black-coffee',
+    ]),
+    _SeedMeal(MealSlot.lunch, 13, [
+      'grilled-chicken-sandwich',
+      'sweet-potato-fries',
+    ]),
+    _SeedMeal(MealSlot.snack, 17, ['sweet-tea']),
+    _SeedMeal(MealSlot.dinner, 20, ['pot-roast', 'cooked-spinach']),
   ],
   5: [
     _SeedMeal(MealSlot.breakfast, 8, ['oats-porridge', 'banana']),
-    _SeedMeal(MealSlot.lunch, 13, ['chole', 'brown-rice']),
+    _SeedMeal(MealSlot.lunch, 13, ['turkey-chili', 'cornbread']),
     _SeedMeal(MealSlot.dinner, 20, ['grilled-chicken-salad']),
   ],
   4: [
-    // The filter coffee is what carries this day over the sugar ceiling — the
-    // lassi alone lands just under it, and the point of the seed is that four
-    // days clear it.
-    _SeedMeal(MealSlot.breakfast, 9, [
-      'masala-dosa',
-      'coconut-chutney',
-      'filter-coffee',
-    ]),
-    _SeedMeal(MealSlot.lunch, 13, ['rajma', 'plain-rice']),
-    _SeedMeal(MealSlot.snack, 16, ['sweet-lassi', 'samosa']),
-    _SeedMeal(MealSlot.dinner, 21, ['paneer-tikka', 'roti']),
+    // Breakfast alone carries this day over the sugar ceiling — the point of
+    // the seed is that four days clear it.
+    _SeedMeal(MealSlot.breakfast, 9, ['pancakes-syrup', 'orange-juice']),
+    _SeedMeal(MealSlot.lunch, 13, ['chicken-burrito-bowl', 'black-beans']),
+    _SeedMeal(MealSlot.dinner, 21, ['grilled-cheese']),
   ],
   3: [
     _SeedMeal(MealSlot.breakfast, 8, ['boiled-eggs', 'avocado-toast']),
-    _SeedMeal(MealSlot.lunch, 13, ['sambar', 'curd-rice']),
+    _SeedMeal(MealSlot.lunch, 13, ['turkey-sandwich']),
     _SeedMeal(MealSlot.snack, 17, ['cola', 'chocolate-bar']),
-    _SeedMeal(MealSlot.dinner, 20, ['fish-curry', 'brown-rice']),
+    _SeedMeal(MealSlot.dinner, 20, ['steak-baked-potato']),
   ],
   2: [
-    _SeedMeal(MealSlot.breakfast, 8, ['greek-yoghurt', 'guava']),
-    _SeedMeal(MealSlot.lunch, 14, ['lentil-soup', 'hummus-pita']),
-    _SeedMeal(MealSlot.dinner, 20, ['tandoori-chicken', 'mixed-sabzi']),
+    _SeedMeal(MealSlot.breakfast, 8, ['greek-yoghurt', 'banana']),
+    _SeedMeal(MealSlot.lunch, 14, ['chicken-fajitas', 'black-beans']),
+    _SeedMeal(MealSlot.dinner, 20, ['grilled-salmon', 'cooked-spinach']),
   ],
   1: [
-    _SeedMeal(MealSlot.breakfast, 9, ['aloo-paratha', 'masala-chai']),
-    _SeedMeal(MealSlot.lunch, 13, ['chicken-biryani', 'raita']),
+    _SeedMeal(MealSlot.breakfast, 9, ['bagel-cream-cheese', 'black-coffee']),
+    _SeedMeal(MealSlot.lunch, 13, ['cheeseburger', 'fries']),
     _SeedMeal(MealSlot.snack, 17, ['ice-cream']),
-    _SeedMeal(MealSlot.dinner, 21, ['palak-paneer', 'roti']),
+    _SeedMeal(MealSlot.dinner, 21, ['grilled-chicken-sandwich']),
   ],
   0: [
     _SeedMeal(MealSlot.breakfast, 8, ['oats-porridge', 'almonds']),
-    _SeedMeal(MealSlot.lunch, 13, ['dal-tadka', 'roti', 'cooked-spinach']),
+    _SeedMeal(MealSlot.lunch, 13, [
+      'turkey-sandwich',
+      'black-beans',
+      'cooked-spinach',
+    ]),
   ],
 };
 
-/// Portions that need to be more than one to be realistic — nobody eats a
-/// single roti with a bowl of dal.
-const Map<String, double> _portions = {'roti': 2};
+const Map<String, double> _portions = {};
 
 List<MealEntry> demoMealSeed({DateTime? now}) {
   final today = now ?? DateTime.now();

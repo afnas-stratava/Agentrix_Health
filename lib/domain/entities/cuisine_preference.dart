@@ -1,19 +1,19 @@
 enum CuisinePreference {
-  indian,
-  mediterranean,
-  eastAsian,
-  mexican,
-  middleEastern,
   american,
+  mexican,
+  mediterranean,
+  indian,
+  eastAsian,
+  middleEastern,
   vegetarian;
 
   String get label => switch (this) {
-    CuisinePreference.indian => 'Indian',
-    CuisinePreference.mediterranean => 'Mediterranean',
-    CuisinePreference.eastAsian => 'East Asian',
-    CuisinePreference.mexican => 'Mexican',
-    CuisinePreference.middleEastern => 'Middle Eastern',
     CuisinePreference.american => 'American',
+    CuisinePreference.mexican => 'Mexican',
+    CuisinePreference.mediterranean => 'Mediterranean',
+    CuisinePreference.indian => 'Indian',
+    CuisinePreference.eastAsian => 'East Asian',
+    CuisinePreference.middleEastern => 'Middle Eastern',
     CuisinePreference.vegetarian => 'Vegetarian',
   };
 }

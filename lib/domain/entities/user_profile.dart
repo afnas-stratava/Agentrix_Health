@@ -33,6 +33,7 @@ class UserProfile {
     this.restrictions = const {},
     this.conditions = const {},
     this.cycle = const CycleProfile(),
+    this.photoUrl,
   });
 
   final String name;
@@ -61,6 +62,10 @@ class UserProfile {
   final Set<Restriction> restrictions;
   final Set<Condition> conditions;
   final CycleProfile cycle;
+
+  /// From the sign-in provider (Google always has one, Apple never does).
+  /// Never user-editable, so there is no onboarding screen that sets it.
+  final String? photoUrl;
 
   factory UserProfile.initial() => const UserProfile(
     name: '',
@@ -124,6 +129,7 @@ class UserProfile {
     Set<Restriction>? restrictions,
     Set<Condition>? conditions,
     CycleProfile? cycle,
+    String? photoUrl,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -141,6 +147,7 @@ class UserProfile {
       restrictions: restrictions ?? this.restrictions,
       conditions: conditions ?? this.conditions,
       cycle: cycle ?? this.cycle,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 }

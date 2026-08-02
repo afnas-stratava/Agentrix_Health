@@ -23,8 +23,11 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.agentrix_health"
+        // Matches the iOS bundle ID and the Firebase Android app registration.
+        // `namespace` above is only the R/BuildConfig package and is
+        // deliberately left alone — changing it would move MainActivity.kt for
+        // no functional gain.
+        applicationId = "com.stratava.agentrixhealth"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

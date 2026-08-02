@@ -37,6 +37,9 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
     return _collection.doc(uid).set(_toMap(profile));
   }
 
+  @override
+  Future<void> delete(String uid) => _collection.doc(uid).delete();
+
   Map<String, dynamic> _toMap(UserProfile profile) {
     return {
       'name': profile.name,
@@ -54,6 +57,7 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
       'restrictions': profile.restrictions.map((r) => r.name).toList(),
       'conditions': profile.conditions.map((c) => c.name).toList(),
       'cycle': profile.cycle.toJson(),
+      'photoUrl': profile.photoUrl,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -85,6 +89,7 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
               Map<String, dynamic>.from(map['cycle'] as Map),
             )
           : initial.cycle,
+      photoUrl: map['photoUrl'] as String?,
     );
   }
 

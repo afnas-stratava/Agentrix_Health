@@ -9,5 +9,12 @@
 	<true/>
 	<key>com.apple.developer.healthkit.access</key>
 	<array/>
+	<!-- Sign in with Apple. `Default` is the standard capability; the App ID in
+	     the developer portal must have the same capability enabled or the
+	     entitlement fails to provision and the build is rejected at signing. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>

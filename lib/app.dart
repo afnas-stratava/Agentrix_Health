@@ -5,7 +5,9 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_shadows.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/providers/app_stage_provider.dart';
+import 'presentation/providers/shared_document_provider.dart';
 import 'presentation/screens/main/main_shell.dart';
+import 'presentation/screens/onboarding/account_screen.dart';
 import 'presentation/screens/onboarding/body_screen.dart';
 import 'presentation/screens/onboarding/diet_screen.dart';
 import 'presentation/screens/onboarding/goals_screen.dart';
@@ -22,7 +24,9 @@ class AgentrixHealthApp extends StatelessWidget {
       title: 'Agentrix Health',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const _ResponsiveRoot(child: _AppStageSwitcher()),
+      home: const SharedDocumentWatcher(
+        child: _ResponsiveRoot(child: _AppStageSwitcher()),
+      ),
     );
   }
 }
@@ -106,6 +110,7 @@ class _AppStageSwitcher extends ConsumerWidget {
       color: AppColors.canvas,
       child: switch (stage) {
         AppStage.welcome => const WelcomeScreen(),
+        AppStage.account => const AccountScreen(),
         AppStage.sex => const SexScreen(),
         AppStage.body => const BodyScreen(),
         AppStage.goals => const GoalsScreen(),

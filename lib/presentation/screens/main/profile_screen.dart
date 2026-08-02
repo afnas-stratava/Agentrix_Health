@@ -1,7 +1,11 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_info.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -11,21 +15,29 @@ import '../../../core/widgets/app_tag.dart';
 import '../../../core/widgets/pressable_scale.dart';
 import '../../../core/widgets/segmented_control.dart';
 import '../../../domain/entities/nutrition/meal_entry.dart';
+import '../../../data/auth/social_sign_in.dart';
 import '../../../features/correlation/engine_context.dart';
+import '../../providers/account_provider.dart';
+import '../../providers/app_stage_provider.dart';
 import '../../providers/health_providers.dart';
 import '../../providers/insights_providers.dart';
 import '../../providers/labs_providers.dart';
 import '../../providers/nutrition_providers.dart';
 import '../../providers/settings_providers.dart';
 import '../../providers/user_profile_provider.dart';
+import '../../widgets/auth/sign_in_buttons.dart';
+import 'about_screen.dart';
 import 'gmail_import_screen.dart';
 import 'main_shell.dart';
 import 'profile_edit_screen.dart';
 
 /// Settings. Mirrors `app/(tabs)/settings.tsx`.
 ///
-/// Eight sections in RN's order: profile, Apple Health, Gmail, reference ranges,
-/// analysis window, which insights you see, demo data, your data.
+/// RN's order — profile, Apple Health, Gmail, reference ranges, analysis
+/// window, which insights you see, demo data, your data — then two sections
+/// with no RN counterpart: About and support, and Account. Both sit at the
+/// bottom, About because it is reference material rather than a setting and
+/// Account because sign out and delete belong last.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -48,6 +60,8 @@ class ProfileScreen extends ConsumerWidget {
           _RuleToggleSection(),
           _DemoDataSection(),
           _YourDataSection(),
+          _AboutSection(),
+          _AccountSection(),
           _VersionFooter(),
         ],
       ),
@@ -92,21 +106,270 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _RowIcon extends StatelessWidget {
-  const _RowIcon(this.icon);
+  const _RowIcon(this.icon, {this.photoUrl});
 
   final IconData icon;
 
+  /// From the sign-in provider. Falls back to [icon] when absent, or when the
+  /// URL fails to load (Google photos require an active session to fetch).
+  final String? photoUrl;
+
   @override
   Widget build(BuildContext context) {
+    final url = photoUrl;
     return Container(
       width: 44,
       height: 44,
       alignment: Alignment.center,
+      clipBehavior: url == null ? Clip.none : Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.brand50,
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      child: Icon(icon, size: 20, color: AppColors.brand),
+      child: url == null
+          ? Icon(icon, size: 20, color: AppColors.brand)
+          : Image.network(
+              url,
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  Icon(icon, size: 20, color: AppColors.brand),
+            ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 9. Account
+// ---------------------------------------------------------------------------
+
+/// Sign in, sign out, delete.
+///
+/// Sits at the bottom because sign out and delete account are destructive,
+/// rarely-used actions — they belong last, after every other setting.
+class _AccountSection extends ConsumerWidget {
+  const _AccountSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(accountStatusProvider);
+    final busy = ref.watch(accountControllerProvider).isLoading;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Account'),
+        SurfaceCard(
+          padded: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.space5),
+                child: status.isAccount
+                    ? _SignedIn(status: status)
+                    : const _SignedOut(),
+              ),
+              if (status.isAccount)
+                _CardFooter(
+                  child: Row(
+                    spacing: AppSpacing.space2,
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          label: 'Sign out',
+                          variant: AppButtonVariant.secondary,
+                          size: AppButtonSize.sm,
+                          block: true,
+                          onPressed: busy
+                              ? null
+                              : () => _confirmSignOut(context, ref),
+                        ),
+                      ),
+                      Expanded(
+                        child: AppButton(
+                          label: 'Delete account',
+                          variant: AppButtonVariant.danger,
+                          size: AppButtonSize.sm,
+                          block: true,
+                          onPressed: busy
+                              ? null
+                              : () => _confirmDelete(context, ref),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Sign-in is mandatory, so signing out cannot leave the user sitting in the
+  /// app — it returns them to the gate. The controller has already put the
+  /// session back on an anonymous uid by then, which is what the gate blocks
+  /// on.
+  ///
+  /// Confirmed rather than immediate: the button sits next to Delete account,
+  /// and a mis-tap now costs the whole app until the user signs back in.
+  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text(
+          'You will need to sign in again to use the app. Nothing is deleted '
+          '— your profile and history come back when you do.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await ref.read(accountControllerProvider.notifier).signOut();
+    ref.read(appStageProvider.notifier).go(AppStage.account);
+  }
+
+  /// Deleting the account removes the cloud copy *and* everything local — a
+  /// user who asks to be deleted does not mean "except the food log".
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This permanently deletes your account and everything stored with '
+          'it, on this device and in the cloud. It cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    HapticFeedback.heavyImpact();
+
+    // Firebase demands a fresh sign-in before it will delete a user, so the
+    // provider sheet may reappear mid-flow. Deciding *which* provider to
+    // re-run is the UI's job — the controller only knows it needs one.
+    final providerIds = ref.read(accountStatusProvider).providerIds;
+    final deleted = await ref
+        .read(accountControllerProvider.notifier)
+        .deleteAccount(
+          reauthenticate: () async {
+            final social = ref.read(socialSignInProvider);
+            try {
+              return providerIds.contains('apple.com')
+                  ? await social.apple()
+                  : await social.google();
+            } on SignInCancelled {
+              // Backing out of the re-auth sheet cancels the deletion, which
+              // is not an error worth a red banner.
+              return null;
+            }
+          },
+        );
+
+    // Only wipe the device once the account is actually gone: a dismissed
+    // re-auth sheet must leave the user exactly as they were.
+    if (!deleted) return;
+
+    await ref.read(labsProvider.notifier).clear();
+    await ref.read(mealLogProvider.notifier).clear();
+    ref.read(settingsProvider.notifier).reset();
+    ref.read(userProfileProvider.notifier).reset();
+
+    // Nothing of theirs is left, so the app returns to its first-run state
+    // rather than showing an empty shell behind a locked gate.
+    ref.read(appStageProvider.notifier).goWelcome();
+  }
+}
+
+class _SignedIn extends StatelessWidget {
+  const _SignedIn({required this.status});
+
+  final AccountStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final via = status.providerIds
+        .map(
+          (id) => switch (id) {
+            'apple.com' => 'Apple',
+            'google.com' => 'Google',
+            _ => null,
+          },
+        )
+        .whereType<String>()
+        .join(' and ');
+
+    return Row(
+      spacing: AppSpacing.space3,
+      children: [
+        _RowIcon(Icons.person_outline, photoUrl: status.photoUrl),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                status.label,
+                style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                via.isEmpty ? 'Signed in' : 'Signed in with $via',
+                style: AppTextStyles.cardMeta.copyWith(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SignedOut extends StatelessWidget {
+  const _SignedOut();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'This device only',
+          style: AppTextStyles.cardTitle.copyWith(fontSize: 14),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Your health profile is stored against your account and comes back '
+          'on a new phone. Your food log and lab reports stay on this one.',
+          style: AppTextStyles.cardBody.copyWith(fontSize: 13, height: 1.5),
+        ),
+        const SizedBox(height: AppSpacing.space4),
+        const SignInButtons(),
+      ],
     );
   }
 }
@@ -142,7 +405,7 @@ class _ProfileSection extends ConsumerWidget {
                   child: Row(
                     spacing: AppSpacing.space3,
                     children: [
-                      const _RowIcon(Icons.person_outline),
+                      _RowIcon(Icons.person_outline, photoUrl: profile.photoUrl),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,8 +577,10 @@ class _AppleHealthSection extends ConsumerWidget {
               ] else ...[
                 const SizedBox(height: AppSpacing.space3),
                 Text(
-                  '$days days read from your health store. Read-only; nothing '
-                  'is written back, and none of it leaves this device.',
+                  '$days days read from your health store. Read-only — '
+                  'nothing is ever written back. Your raw readings stay on '
+                  'this device; only a short readiness summary goes out, and '
+                  'only when you ask the assistant a question.',
                   style: AppTextStyles.cardBody.copyWith(
                     fontSize: 12,
                     height: 1.45,
@@ -669,9 +934,12 @@ class _YourDataSection extends ConsumerWidget {
                   ),
                   Expanded(
                     child: Text(
-                      'Telemetry never leaves your device, and neither do your '
-                      'lab results — there is no parsing service configured in '
-                      'this build, so nothing is uploaded at all.',
+                      'Your Apple Health readings, food log and stored reports '
+                      'live on this device. A report is sent to Google Gemini '
+                      'once, to be read into values, and the assistant sends a '
+                      'summary of your data with each question you ask it. '
+                      'Nothing is sold, advertised against, or used to train '
+                      'anyone’s models.',
                       style: AppTextStyles.cardBody.copyWith(
                         fontSize: 13,
                         height: 1.5,
@@ -745,6 +1013,163 @@ class _YourDataSection extends ConsumerWidget {
     await ref.read(mealLogProvider.notifier).clear();
     ref.read(settingsProvider.notifier).reset();
     ref.read(userProfileProvider.notifier).reset();
+
+    // Nothing of theirs is left, so the app returns to its first-run state
+    // rather than showing an empty shell behind a locked gate.
+    ref.read(appStageProvider.notifier).goWelcome();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 9. About and support
+// ---------------------------------------------------------------------------
+
+/// The rows every app is expected to carry: what this is, the two legal
+/// documents, a way to reach a human, and the licences of what it is built on.
+///
+/// Privacy policy is not filler here — App Review requires a reachable one for
+/// anything touching HealthKit, and it has to be linked from inside the app as
+/// well as from App Store Connect.
+class _AboutSection extends StatelessWidget {
+  const _AboutSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('About and support'),
+        SurfaceCard(
+          padded: false,
+          child: Column(
+            children: [
+              _AboutRow(
+                icon: Icons.info_outline,
+                title: 'About ${AppInfo.appName}',
+                subtitle: 'Version ${AppInfo.version} · what leaves your device',
+                onTap: () => MainShell.push(context, const AboutScreen()),
+              ),
+              _AboutRow(
+                icon: Icons.shield_outlined,
+                title: 'Privacy policy',
+                subtitle: 'How your health data is handled',
+                onTap: () =>
+                    _open(context, Uri.parse(AppInfo.privacyPolicyUrl)),
+                external: true,
+              ),
+              _AboutRow(
+                icon: Icons.gavel_outlined,
+                title: 'Terms of service',
+                subtitle: 'The agreement you are using this under',
+                onTap: () => _open(context, Uri.parse(AppInfo.termsUrl)),
+                external: true,
+              ),
+              _AboutRow(
+                icon: Icons.mail_outline,
+                title: 'Contact us',
+                subtitle: AppInfo.supportEmail,
+                onTap: () => _open(
+                  context,
+                  AppInfo.supportMailto(platform: _platformName),
+                ),
+                external: true,
+                last: true,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  static String get _platformName {
+    if (Platform.isIOS) return 'iOS';
+    if (Platform.isAndroid) return 'Android';
+    return Platform.operatingSystem;
+  }
+
+  /// Reports a failed open instead of doing nothing. The likeliest cause is a
+  /// placeholder URL in [AppInfo] that was never pointed at a real page, and
+  /// that should be loud rather than silent.
+  static Future<void> _open(BuildContext context, Uri uri) async {
+    HapticFeedback.selectionClick();
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (opened || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not open ${uri.host.isEmpty ? uri : uri.host}'),
+      ),
+    );
+  }
+}
+
+class _AboutRow extends StatelessWidget {
+  const _AboutRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.external = false,
+    this.last = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  /// Leaves the app, so it gets the outward arrow rather than the chevron
+  /// that means "another screen in here".
+  final bool external;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressableScale(
+      scaleTo: 0.99,
+      semanticLabel: title,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space5,
+          vertical: AppSpacing.space4,
+        ),
+        decoration: BoxDecoration(
+          border: last
+              ? null
+              : const Border(bottom: BorderSide(color: AppColors.hairline)),
+        ),
+        child: Row(
+          spacing: AppSpacing.space3,
+          children: [
+            _RowIcon(icon),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTextStyles.cardTitle.copyWith(fontSize: 15),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.cardMeta.copyWith(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              external ? Icons.open_in_new : Icons.chevron_right,
+              size: external ? 15 : 17,
+              color: AppColors.faint,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -761,7 +1186,7 @@ class _VersionFooter extends StatelessWidget {
         0,
       ),
       child: Text(
-        'Agentrix Health 1.0.0 · Not a medical device',
+        '${AppInfo.appName} ${AppInfo.version} · Not a medical device',
         textAlign: TextAlign.center,
         style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
       ),
