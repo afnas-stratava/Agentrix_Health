@@ -1,6 +1,6 @@
+import 'package:agentrix_health/core/config/secrets.example.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/config/secrets.dart';
 import '../../data/labs/gemini_lab_parser.dart';
 import '../../data/repositories/prefs_lab_repository.dart';
 import '../../domain/entities/labs/lab_report.dart';

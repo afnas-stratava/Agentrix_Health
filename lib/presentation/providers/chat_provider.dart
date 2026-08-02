@@ -1,6 +1,6 @@
+import 'package:agentrix_health/core/config/secrets.example.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/config/secrets.dart';
 import '../../data/chat/gemini_chat_service.dart';
 import '../../domain/entities/chat/chat_message.dart';
 import '../../features/chat/health_assistant.dart';
