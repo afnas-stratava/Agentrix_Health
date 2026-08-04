@@ -935,11 +935,11 @@ class _YourDataSection extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       'Your Apple Health readings, food log and stored reports '
-                      'live on this device. A report is sent to Google Gemini '
-                      'once, to be read into values, and the assistant sends a '
-                      'summary of your data with each question you ask it. '
-                      'Nothing is sold, advertised against, or used to train '
-                      'anyone’s models.',
+                      'live on this device. Google Gemini sees three things: a '
+                      'lab report when you upload one, a meal photo when you '
+                      'take one, and a summary of your data with each question '
+                      'you ask the assistant. Nothing is sold, advertised '
+                      'against, or used to train anyone’s models.',
                       style: AppTextStyles.cardBody.copyWith(
                         fontSize: 13,
                         height: 1.5,

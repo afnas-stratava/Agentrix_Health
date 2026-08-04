@@ -93,6 +93,14 @@ class AboutScreen extends StatelessWidget {
                     'biomarker values, then stored on this device.',
               ),
               _DataRow(
+                icon: Icons.restaurant_outlined,
+                title: 'Meal photos you take',
+                detail:
+                    'The picture is sent to Google Gemini to work out which '
+                    'dishes are on the plate. The photo itself stays on this '
+                    'device — only a copy is sent, and only when you take one.',
+              ),
+              _DataRow(
                 icon: Icons.forum_outlined,
                 title: 'Questions you ask the assistant',
                 detail:

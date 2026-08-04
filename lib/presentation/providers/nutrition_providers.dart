@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config/secrets.dart';
 import '../../core/util/iso_day.dart';
+import '../../data/nutrition/gemini_meal_vision.dart';
 import '../../data/repositories/prefs_meal_log_repository.dart';
 import '../../domain/entities/nutrition/food_definition.dart';
 import '../../domain/entities/nutrition/macros.dart';
@@ -18,6 +20,16 @@ import 'user_profile_provider.dart';
 final mealLogRepositoryProvider = Provider<MealLogRepository>(
   (ref) => PrefsMealLogRepository(),
 );
+
+/// Reads meal photos, or null when no key is configured.
+///
+/// Null rather than a no-op implementation on purpose: the log screen checks
+/// for it and skips the whole photo-reading affordance, so an unconfigured
+/// build never shows a spinner for a call it cannot make.
+final mealVisionProvider = Provider<GeminiMealVision?>((ref) {
+  const vision = GeminiMealVision(apiKey: geminiApiKey);
+  return vision.isConfigured ? vision : null;
+});
 
 /// The food log.
 ///

@@ -15,6 +15,7 @@ import '../../../core/widgets/pressable_scale.dart';
 import '../../../core/widgets/screen_back_button.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/surface_card.dart';
+import '../../../data/nutrition/gemini_meal_vision.dart';
 import '../../../domain/entities/nutrition/food_definition.dart';
 import '../../../domain/entities/nutrition/macros.dart';
 import '../../../domain/entities/nutrition/meal_entry.dart';
@@ -26,10 +27,12 @@ import '../../providers/user_profile_provider.dart';
 /// Meal logging. Mirrors `app/meal/log.tsx`.
 ///
 /// Two ways in — photograph the plate, or search — converging on the same
-/// confirm-and-adjust list. The photo is attached to the entry and the
-/// suggestion list is ranked from the user's own profile and history; the copy
-/// is explicit that it is *not* read from the image, because a food log that
-/// quietly invents portions is worse than no food log.
+/// confirm-and-adjust list. A photo is read by [GeminiMealVision] and its
+/// findings become the list; when that cannot happen the list falls back to
+/// [suggestPlate]'s profile ranking. Which of the two produced the rows is
+/// always stated above them, and nothing is ever added to the meal without a
+/// tap, because a food log that quietly invents portions is worse than no food
+/// log.
 class LogMealScreen extends ConsumerStatefulWidget {
   const LogMealScreen({super.key});
 
@@ -37,11 +40,42 @@ class LogMealScreen extends ConsumerStatefulWidget {
   ConsumerState<LogMealScreen> createState() => _LogMealScreenState();
 }
 
+/// How the suggestion list in front of the user came to be.
+enum _PhotoReadStatus {
+  /// The call is in flight.
+  reading,
+
+  /// The photo was read and produced at least one finding.
+  read,
+
+  /// The photo was read and held no food. Not a failure.
+  noFood,
+
+  /// The call could not be made or did not come back. Not an empty plate.
+  failed,
+}
+
+class _PhotoRead {
+  const _PhotoRead(
+    this.status, {
+    this.suggestions = const [],
+    this.unmatched = const [],
+  });
+
+  final _PhotoReadStatus status;
+  final List<PlateSuggestion> suggestions;
+  final List<String> unmatched;
+}
+
 class _LogMealScreenState extends ConsumerState<LogMealScreen> {
   late MealSlot _slot;
   String? _photoPath;
   String _query = '';
   final List<LoggedFood> _selected = [];
+
+  /// Null until a photo is taken, and again once one is removed — the ranked
+  /// list is what the screen shows in both cases.
+  _PhotoRead? _photoRead;
 
   @override
   void initState() {
@@ -52,7 +86,7 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
   Macros get _total => sumMacros(_selected.map((f) => f.macros));
 
   /// Tapping the same dish twice means a second helping, not a duplicate row.
-  void _addFood(FoodDefinition definition) {
+  void _addFood(FoodDefinition definition, {double portions = 1}) {
     HapticFeedback.lightImpact();
     setState(() {
       final existing = _selected.indexWhere((f) => f.foodId == definition.id);
@@ -60,13 +94,26 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
         final current = _selected[existing];
         _selected[existing] = LoggedFood.fromDefinition(
           definition,
-          portions: current.portions + 1,
+          portions: current.portions + portions,
         );
       } else {
-        _selected.add(LoggedFood.fromDefinition(definition));
+        _selected.add(
+          LoggedFood.fromDefinition(definition, portions: portions),
+        );
       }
       _query = '';
     });
+  }
+
+  /// Adds everything the photo turned up in one tap.
+  ///
+  /// The point of reading the photo is to save taps, but the rows still land in
+  /// the same editable list and still need Save — this shortens the confirm
+  /// step, it does not remove it.
+  void _addAll(List<PlateSuggestion> suggestions) {
+    for (final suggestion in suggestions) {
+      _addFood(suggestion.food, portions: suggestion.portions);
+    }
   }
 
   /// Rescales from the *definition*, never from the already-scaled macros —
@@ -87,19 +134,63 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
 
   Future<void> _attachPhoto(ImageSource source) async {
     final messenger = ScaffoldMessenger.of(context);
+    final vision = ref.read(mealVisionProvider);
     try {
       final picked = await ImagePicker().pickImage(
         source: source,
+        // 1600px is comfortably enough for a model to tell rice from roti, and
+        // keeps the upload small enough to finish on a phone connection.
         maxWidth: 1600,
         imageQuality: 80,
       );
       if (picked == null) return;
-      setState(() => _photoPath = picked.path);
+
+      setState(() {
+        _photoPath = picked.path;
+        // Null when there is no key: the photo still attaches, the screen just
+        // never claims it is being read.
+        _photoRead = vision == null
+            ? null
+            : const _PhotoRead(_PhotoReadStatus.reading);
+      });
+
+      if (vision != null) await _readPhoto(vision, picked.path);
     } catch (error) {
       messenger.showSnackBar(
         SnackBar(content: Text('Could not attach the photo: $error')),
       );
     }
+  }
+
+  Future<void> _readPhoto(GeminiMealVision vision, String path) async {
+    try {
+      final result = await vision.identify(photoPath: path, slot: _slot);
+      // The user can remove the photo, or pick another one, while this is in
+      // flight — dropping a stale reply is the difference between a correct
+      // list and one describing a picture that is no longer on screen.
+      if (!mounted || _photoPath != path) return;
+      setState(() {
+        _photoRead = result.foundNothing
+            ? const _PhotoRead(_PhotoReadStatus.noFood)
+            : _PhotoRead(
+                _PhotoReadStatus.read,
+                suggestions: result.suggestions,
+                unmatched: result.unmatched,
+              );
+      });
+    } catch (_) {
+      if (!mounted || _photoPath != path) return;
+      // Deliberately not folded into `noFood`: the ranked list is what the user
+      // gets either way, but they are told which of the two happened.
+      setState(() => _photoRead = const _PhotoRead(_PhotoReadStatus.failed));
+    }
+  }
+
+  void _removePhoto() {
+    setState(() {
+      _photoPath = null;
+      _photoRead = null;
+    });
   }
 
   Future<void> _save() async {
@@ -223,7 +314,9 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
                 child: _photoPath != null
                     ? _PhotoPreview(
                         path: _photoPath!,
-                        onRemove: () => setState(() => _photoPath = null),
+                        reading:
+                            _photoRead?.status == _PhotoReadStatus.reading,
+                        onRemove: _removePhoto,
                       )
                     : Row(
                         spacing: 10,
@@ -337,66 +430,9 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
                     AppSpacing.space5,
                     0,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SectionHeader(
-                        title: 'Likely at ${_slot.label.toLowerCase()}',
-                      ),
-                      // The disclosure sits above the list, not under it: it
-                      // changes how the list should be read.
-                      Container(
-                        margin: const EdgeInsets.only(
-                          bottom: AppSpacing.space3,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.ink.withValues(alpha: 0.04),
-                          border: Border.all(color: AppColors.hairline),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: AppSpacing.space2,
-                          children: [
-                            const Icon(
-                              Icons.info_outline,
-                              size: 14,
-                              color: AppColors.faint,
-                            ),
-                            Expanded(
-                              child: Text(
-                                suggestionBasis,
-                                style: AppTextStyles.cardMeta.copyWith(
-                                  fontSize: 11,
-                                  height: 1.45,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SurfaceCard(
-                        child: Column(
-                          children: [
-                            for (final suggestion in suggestions)
-                              _FoodRow(
-                                title: suggestion.food.name,
-                                detail:
-                                    '${suggestion.food.portionLabel} · '
-                                    '${suggestion.food.macros.calories} kcal · '
-                                    '${suggestion.reason}',
-                                isLast: suggestion == suggestions.last,
-                                onTap: () => _addFood(suggestion.food),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: _photoRead?.status == _PhotoReadStatus.read
+                      ? _photoFindings(_photoRead!)
+                      : _rankedSuggestions(suggestions),
                 ),
             ],
           ),
@@ -404,6 +440,160 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
 
         _SaveBar(total: _total, count: _selected.length, onSave: _save),
       ],
+    );
+  }
+
+  /// What the photo turned up.
+  Widget _photoFindings(_PhotoRead read) {
+    final suggestions = read.suggestions;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(title: 'On your plate'),
+        const _Basis(photoReadBasis),
+        SurfaceCard(
+          child: Column(
+            children: [
+              for (final suggestion in suggestions)
+                _FoodRow(
+                  title: suggestion.food.name,
+                  detail: _findingDetail(suggestion),
+                  isLast: suggestion == suggestions.last,
+                  onTap: () => _addFood(
+                    suggestion.food,
+                    portions: suggestion.portions,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (suggestions.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.space3),
+            child: AppButton(
+              label: 'Add all ${suggestions.length} to this meal',
+              variant: AppButtonVariant.secondary,
+              block: true,
+              leading: const Icon(Icons.playlist_add, size: 15),
+              onPressed: () => _addAll(suggestions),
+            ),
+          ),
+        // Named rather than dropped: a plate logged without its side dish reads
+        // as a complete record while under-counting the meal.
+        if (read.unmatched.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.space3),
+            child: _Basis(
+              'Also visible, with no match in the food table: '
+              '${read.unmatched.join(', ')}. Search above to add anything '
+              'close.',
+              icon: Icons.help_outline,
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// The profile-ranked list — the default, and the fallback whenever the photo
+  /// path could not produce one.
+  Widget _rankedSuggestions(List<PlateSuggestion> suggestions) {
+    final status = _photoRead?.status;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (status == _PhotoReadStatus.reading) ...[
+          SectionHeader(title: 'Reading your photo'),
+          const _Basis(
+            'Looking at what is on the plate. You can start searching now if '
+            'you would rather not wait.',
+            icon: Icons.hourglass_empty,
+          ),
+        ] else ...[
+          SectionHeader(title: 'Likely at ${_slot.label.toLowerCase()}'),
+          // Says which of the two paths produced the rows below. The
+          // photo-specific notes come first because they explain why this list
+          // is the ranked one and not the photo's.
+          if (status == _PhotoReadStatus.failed)
+            const _Basis(photoUnreadableNote, icon: Icons.cloud_off_outlined),
+          if (status == _PhotoReadStatus.noFood)
+            const _Basis(photoNoFoodNote, icon: Icons.no_food_outlined),
+          const _Basis(suggestionBasis),
+        ],
+        SurfaceCard(
+          child: Column(
+            children: [
+              for (final suggestion in suggestions)
+                _FoodRow(
+                  title: suggestion.food.name,
+                  detail:
+                      '${suggestion.food.portionLabel} · '
+                      '${suggestion.food.macros.calories} kcal · '
+                      '${suggestion.reason}',
+                  isLast: suggestion == suggestions.last,
+                  onTap: () => _addFood(suggestion.food),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Leads with the estimate the user is being asked to check, then the macros
+  /// that estimate produces, then how the dish was recognised.
+  String _findingDetail(PlateSuggestion suggestion) {
+    final food = suggestion.food;
+    final portions = suggestion.portions;
+    final amount = portions == 1
+        ? food.portionLabel
+        : '${_trimZero(portions)}× ${food.portionLabel}';
+    final calories = (food.macros.calories * portions).round();
+
+    return '$amount · $calories kcal · ${suggestion.reason}';
+  }
+
+  static String _trimZero(double value) => value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
+}
+
+/// The line above a suggestion list saying where the list came from.
+///
+/// Sits above the rows, not under them: it changes how they should be read.
+class _Basis extends StatelessWidget {
+  const _Basis(this.text, {this.icon = Icons.info_outline});
+
+  final String text;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.space3),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.ink.withValues(alpha: 0.04),
+        border: Border.all(color: AppColors.hairline),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacing.space2,
+        children: [
+          Icon(icon, size: 14, color: AppColors.faint),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTextStyles.cardMeta.copyWith(
+                fontSize: 11,
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -455,10 +645,18 @@ class _SlotChip extends StatelessWidget {
 }
 
 class _PhotoPreview extends StatelessWidget {
-  const _PhotoPreview({required this.path, required this.onRemove});
+  const _PhotoPreview({
+    required this.path,
+    required this.onRemove,
+    this.reading = false,
+  });
 
   final String path;
   final VoidCallback onRemove;
+
+  /// Dims the photo and shows a spinner over it while the model reads it, so
+  /// the wait is attached to the thing being waited on.
+  final bool reading;
 
   @override
   Widget build(BuildContext context) {
@@ -484,6 +682,24 @@ class _PhotoPreview extends StatelessWidget {
             ),
           ),
         ),
+        if (reading)
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              child: Container(
+                color: AppColors.ink.withValues(alpha: 0.45),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
+                ),
+              ),
+            ),
+          ),
         Positioned(
           right: 12,
           top: 12,

@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../data/labs/gmail_lab_source.dart';
 import '../../../domain/entities/labs/lab_report.dart';
 import '../../providers/labs_providers.dart';
 import 'gmail_import_screen.dart';
