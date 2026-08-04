@@ -46,6 +46,7 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
       'age': profile.age,
       'gender': profile.gender.name,
       'goal': profile.goal.name,
+      'goals': profile.goals.map((g) => g.name).toList(),
       'cuisines': profile.cuisines.map((c) => c.name).toList(),
       'allergies': profile.allergies.map((a) => a.name).toList(),
       'customRestrictions': profile.customRestrictions,
@@ -64,11 +65,17 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
 
   UserProfile _fromMap(Map<String, dynamic> map) {
     final initial = UserProfile.initial();
+    final savedGoals = _enumSetFrom(HealthGoal.values, map['goals']);
+    final legacyGoal = _enumFrom(HealthGoal.values, map['goal']);
+    final goals = savedGoals.isNotEmpty
+        ? savedGoals
+        : (legacyGoal != null ? {legacyGoal} : initial.goals);
+
     return UserProfile(
       name: map['name'] as String? ?? initial.name,
       age: map['age'] as String? ?? initial.age,
       gender: _enumFrom(Gender.values, map['gender']) ?? initial.gender,
-      goal: _enumFrom(HealthGoal.values, map['goal']) ?? initial.goal,
+      goals: goals,
       cuisines: _enumListFrom(CuisinePreference.values, map['cuisines']),
       allergies: _enumSetFrom(Allergy.values, map['allergies']),
       customRestrictions:

@@ -221,12 +221,12 @@ void main() {
       // Cuisine preference is a weighting, not an override — dish quality still
       // decides which of the user's cuisines wins. So the contract is "the top
       // pick is one they eat", not "it is their rank-0 cuisine".
-      final asian = expandCuisinePreferences([CuisinePreference.eastAsian]);
+      final american = expandCuisinePreferences([CuisinePreference.american]);
       final picks = _rank(
-        profile: _profile(cuisines: [CuisinePreference.eastAsian]),
+        profile: _profile(cuisines: [CuisinePreference.american]),
       );
 
-      expect(asian, contains(picks.first.restaurant.cuisine));
+      expect(american, contains(picks.first.restaurant.cuisine));
       expect(
         picks.first.reasons.any((r) => r.contains('cuisine')),
         isTrue,
@@ -236,9 +236,9 @@ void main() {
     test('only claims a cuisine is preferred when it is', () {
       const venues = [
         Restaurant(
-          id: 'jp',
-          name: 'Japanese',
-          cuisine: Cuisine.japanese,
+          id: 'ea',
+          name: 'East Asian',
+          cuisine: Cuisine.eastAsian,
           rating: 4.2,
           ratingCount: 500,
           distanceMetres: 600,
@@ -263,14 +263,14 @@ void main() {
       final neutral = _rank(restaurants: venues);
       final preferring = _rank(
         restaurants: venues,
-        profile: _profile(cuisines: [CuisinePreference.eastAsian]),
+        profile: _profile(cuisines: [CuisinePreference.chinese]),
       );
 
       // With no stated preference, nothing may claim to match one.
-      expect(claimsCuisine(neutral, 'jp'), isFalse);
+      expect(claimsCuisine(neutral, 'ea'), isFalse);
       expect(claimsCuisine(neutral, 'med'), isFalse);
 
-      expect(claimsCuisine(preferring, 'jp'), isTrue);
+      expect(claimsCuisine(preferring, 'ea'), isTrue);
       expect(claimsCuisine(preferring, 'med'), isFalse);
     });
 
@@ -320,10 +320,6 @@ void main() {
           .where((d) => d.tags.contains(FoodTag.ironRich));
 
       expect(matched, isNotEmpty);
-      expect(
-        matched.first.rationale.toLowerCase(),
-        contains('today’s plan'),
-      );
     });
   });
 

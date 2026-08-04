@@ -58,6 +58,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "368943821492-cdtelu8gl8e0p611fsm73pdfn0fg640e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.stratava.agentrixhealth",
+            "certificate_hash": "80877e3f21f6ed3eceb22e8dfb2704292d0c648e"
+          }
+        },
+        {
           "client_id": "368943821492-ilqu1s9fr9ktktjlv3gjfdso2eh0umta.apps.googleusercontent.com",
           "client_type": 3
         }

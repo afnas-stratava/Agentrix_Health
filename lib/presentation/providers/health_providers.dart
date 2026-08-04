@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
@@ -42,6 +43,9 @@ Future<T> _orFallback<T>(Future<T> Function() call, T fallback) async {
     return fallback;
   }
 }
+
+/// The platform health store's display name, for UI copy.
+String get healthStoreName => Platform.isAndroid ? 'Health Connect' : 'Apple Health';
 
 /// Which telemetry source is actually feeding the screens.
 enum TelemetrySource {

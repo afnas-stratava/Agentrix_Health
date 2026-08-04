@@ -187,7 +187,7 @@ class ComposeInput {
 ) {
   final drivers = <BriefDriver>[];
   var title = 'Eat for your goal';
-  var detail = input.profile.goal.hint;
+  var detail = input.profile.goals.map((g) => g.hint).join('; ');
   var tags = <FoodTag>[FoodTag.highProtein, FoodTag.highFibre];
 
   // --- 1. Blood work ---------------------------------------------------------

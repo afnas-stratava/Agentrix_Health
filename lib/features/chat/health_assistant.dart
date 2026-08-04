@@ -57,7 +57,7 @@ String buildHealthAssistantSystemPrompt(HealthAssistantContext context) {
     '',
     'User profile:',
     '- Name: ${profile.name.trim().isEmpty ? 'not set' : profile.name}',
-    '- Goal: ${profile.goal.label} — ${profile.goal.hint}',
+    '- Goals: ${profile.goals.map((g) => '${g.label} (${g.hint})').join('; ')}',
     '- Activity level: ${profile.activityLevel.label}',
   ];
 

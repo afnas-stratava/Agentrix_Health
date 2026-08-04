@@ -17,7 +17,9 @@ enum Cuisine {
   middleEastern('middle-eastern', 'Middle Eastern'),
   eastAsian('east-asian', 'East Asian'),
   japanese('japanese', 'Japanese'),
-  thai('thai', 'Thai');
+  thai('thai', 'Thai'),
+  chinese('chinese', 'Chinese'),
+  korean('korean', 'Korean');
 
   const Cuisine(this.wireName, this.label);
 
@@ -51,14 +53,14 @@ List<Cuisine> expandCuisinePreferences(List<CuisinePreference> preferences) {
         add(Cuisine.southIndian);
       case CuisinePreference.mediterranean:
         add(Cuisine.mediterranean);
-      case CuisinePreference.eastAsian:
+      case CuisinePreference.chinese:
+        add(Cuisine.chinese);
         add(Cuisine.eastAsian);
-        add(Cuisine.japanese);
-        add(Cuisine.thai);
+      case CuisinePreference.korean:
+        add(Cuisine.korean);
+        add(Cuisine.eastAsian);
       case CuisinePreference.mexican:
         add(Cuisine.mexican);
-      case CuisinePreference.middleEastern:
-        add(Cuisine.middleEastern);
       case CuisinePreference.american:
         add(Cuisine.american);
         add(Cuisine.continental);

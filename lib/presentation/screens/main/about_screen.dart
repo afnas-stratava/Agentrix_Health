@@ -12,6 +12,8 @@ import '../../../core/widgets/screen_back_button.dart';
 import '../../../core/widgets/surface_card.dart';
 import 'main_shell.dart';
 
+String get _healthStoreName => Platform.isAndroid ? 'Health Connect' : 'Apple Health';
+
 /// About, and the honest version of "what happens to my data".
 ///
 /// The data section is not decoration. An app that reads HealthKit and then
@@ -53,11 +55,11 @@ class AboutScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.space5),
-        const _Section(
+        _Section(
           label: 'What this app does',
           child: _Body(
             'Agentrix Health reads your sleep, activity, resting heart rate '
-            'and heart-rate variability from Apple Health, and pairs them '
+            'and heart-rate variability from $_healthStoreName, and pairs them '
             'with the blood work you upload. It scores your readiness each '
             'morning, tracks what you eat and drink, and points out where the '
             'two lines up — a biomarker that moves with a habit, a pattern '
@@ -74,7 +76,7 @@ class AboutScreen extends StatelessWidget {
             'Always take a concerning value to a qualified clinician.',
           ),
         ),
-        const _Section(
+        _Section(
           label: 'What leaves your device',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -117,9 +119,9 @@ class AboutScreen extends StatelessWidget {
               ),
               SizedBox(height: AppSpacing.space4),
               _Body(
-                'Your Apple Health readings are never uploaded in raw form, '
-                'and none of your data is sold, used for advertising or used '
-                'to train anyone’s models.',
+                'Your $_healthStoreName readings are never uploaded in raw '
+                'form, and none of your data is sold, used for advertising or '
+                'used to train anyone’s models.',
               ),
             ],
           ),

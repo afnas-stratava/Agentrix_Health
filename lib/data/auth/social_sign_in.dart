@@ -88,6 +88,15 @@ abstract final class AuthConfig {
     'GOOGLE_SERVER_CLIENT_ID',
   );
 
+  /// The project's web (`client_type: 3`) OAuth client — not a secret, it's
+  /// the public audience value every Google ID token is issued for, and it's
+  /// the same value visible in `android/app/google-services.json`. Kept here
+  /// as the default so a plain `flutter run` works without the dart-define
+  /// below; override it only for a build against a different Firebase
+  /// project.
+  static const String _defaultServerClientId =
+      '368943821492-ilqu1s9fr9ktktjlv3gjfdso2eh0umta.apps.googleusercontent.com';
+
   /// Only Apple platforms take a `clientId`; Android reads its own from
   /// `google-services.json`, and passing the iOS one there fails the handshake.
   static String? get clientId {
@@ -96,7 +105,7 @@ abstract final class AuthConfig {
   }
 
   static String? get serverClientId =>
-      googleServerClientId.isEmpty ? null : googleServerClientId;
+      googleServerClientId.isEmpty ? _defaultServerClientId : googleServerClientId;
 }
 
 /// Runs the native provider sheets and hands back a Firebase credential.

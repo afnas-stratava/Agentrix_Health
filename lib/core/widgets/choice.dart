@@ -22,12 +22,14 @@ class ChoiceRow extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.hint,
+    this.isCheckbox = false,
   });
 
   final String label;
   final String? hint;
   final bool selected;
   final VoidCallback onTap;
+  final bool isCheckbox;
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +59,13 @@ class ChoiceRow extends StatelessWidget {
               spacing: AppSpacing.space3,
               children: [
                 Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
+                  isCheckbox
+                      ? (selected
+                          ? Icons.check_box_rounded
+                          : Icons.check_box_outline_blank_rounded)
+                      : (selected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked),
                   size: 18,
                   color: selected ? AppColors.brand : AppColors.faint,
                 ),

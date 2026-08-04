@@ -3,8 +3,8 @@ enum CuisinePreference {
   mexican,
   mediterranean,
   indian,
-  eastAsian,
-  middleEastern,
+  chinese,
+  korean,
   vegetarian;
 
   String get label => switch (this) {
@@ -12,8 +12,8 @@ enum CuisinePreference {
     CuisinePreference.mexican => 'Mexican',
     CuisinePreference.mediterranean => 'Mediterranean',
     CuisinePreference.indian => 'Indian',
-    CuisinePreference.eastAsian => 'East Asian',
-    CuisinePreference.middleEastern => 'Middle Eastern',
+    CuisinePreference.chinese => 'Chinese',
+    CuisinePreference.korean => 'Korean',
     CuisinePreference.vegetarian => 'Vegetarian',
   };
 }

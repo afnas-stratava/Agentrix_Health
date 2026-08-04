@@ -55,7 +55,10 @@ double? _measuredActiveEnergy(List<DailySnapshot> series) {
 }
 
 MacroTargets _macroSplit(UserProfile profile, int calories, double weightKg) {
-  final proteinG = (profile.goal.proteinPerKg * weightKg).round();
+  final proteinPerKg = profile.goals.isEmpty
+      ? 1.2
+      : profile.goals.map((g) => g.proteinPerKg).reduce(math.max);
+  final proteinG = (proteinPerKg * weightKg).round();
 
   // Carbohydrate share, before the protein and fat floors are honoured.
   var carbShare = 0.45;
@@ -127,7 +130,11 @@ NutritionTargets? computeTargets({
       ? (bmr * 1.1 + measured).round()
       : (bmr * profile.activityLevel.multiplier).round();
 
-  var calories = maintenance + profile.goal.calorieOffset;
+  final calorieOffset = profile.goals.isEmpty
+      ? 0
+      : profile.goals.map((g) => g.calorieOffset).reduce((a, b) => a + b);
+
+  var calories = maintenance + calorieOffset;
 
   // Luteal-phase resting expenditure runs measurably higher — the reported
   // range is 2–12%; 5% is the conservative middle. Not applying it is why

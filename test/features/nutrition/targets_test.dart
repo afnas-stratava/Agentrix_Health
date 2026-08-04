@@ -14,7 +14,8 @@ UserProfile _profile({
   double? heightCm = 178,
   double? weightKg = 78,
   String age = '34',
-  HealthGoal goal = HealthGoal.generalWellness,
+  HealthGoal? goal,
+  Set<HealthGoal>? goals,
   ActivityLevel activity = ActivityLevel.moderate,
   Set<Restriction> restrictions = const {},
   Set<Condition> conditions = const {},
@@ -24,7 +25,7 @@ UserProfile _profile({
     heightCm: heightCm,
     weightKg: weightKg,
     age: age,
-    goal: goal,
+    goals: goals ?? (goal != null ? {goal} : {HealthGoal.generalWellness}),
     activityLevel: activity,
     restrictions: restrictions,
     conditions: conditions,
@@ -135,6 +136,20 @@ void main() {
       );
       // A deficit must not also cut protein — that is what costs lean mass.
       expect(cut.macros.proteinG, greaterThan(78));
+    });
+
+    test('combines calorie offsets and uses max protein for multiple goals', () {
+      final recomp = computeTargets(
+        profile: _profile(
+          goals: {HealthGoal.loseWeight, HealthGoal.buildMuscle},
+        ),
+        series: const [],
+      )!;
+
+      expect(
+        recomp.macros.proteinG,
+        (HealthGoal.buildMuscle.proteinPerKg * 78).round(),
+      );
     });
 
     test('lifts calories 5% in the luteal phase', () {

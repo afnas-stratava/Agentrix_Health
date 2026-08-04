@@ -6,11 +6,14 @@
 enum DietPattern {
   omnivore('omnivore', 'No restrictions', 'Everything is on the table'),
   vegetarian('vegetarian', 'Vegetarian', 'No meat or fish; dairy is fine'),
-  eggetarian('eggetarian', 'Eggetarian', 'Vegetarian plus eggs'),
+  lactoseFree(
+    'lactose-free',
+    'Lactose-Free Diet',
+    'No dairy or lactose-containing ingredients',
+  ),
   vegan('vegan', 'Vegan', 'No animal products at all'),
   pescatarian('pescatarian', 'Pescatarian', 'Fish and seafood, no other meat'),
-  halal('halal', 'Halal', 'Halal meat only, no pork or alcohol'),
-  jain('jain', 'Jain', 'No meat, eggs, root vegetables, onion or garlic');
+  halal('halal', 'Halal', 'Halal meat only, no pork or alcohol');
 
   const DietPattern(this.wireName, this.label, this.hint);
 
@@ -19,6 +22,7 @@ enum DietPattern {
   final String hint;
 
   static DietPattern? fromWireName(String value) {
+    if (value == 'eggetarian' || value == 'jain') return DietPattern.vegetarian;
     for (final pattern in DietPattern.values) {
       if (pattern.wireName == value) return pattern;
     }

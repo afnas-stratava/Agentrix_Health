@@ -244,5 +244,17 @@ void main() {
       // Choosing a body-composition goal reveals the target-weight stepper.
       expect(find.text('Goal weight'), findsOneWidget);
     });
+
+    testWidgets('multiple goals can be selected at the same time', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await _openGoalsStep(tester);
+      await tapItem(tester, 'Build muscle');
+      await tapItem(tester, 'Lose weight');
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Goal weight'), findsOneWidget);
+    });
   });
 }

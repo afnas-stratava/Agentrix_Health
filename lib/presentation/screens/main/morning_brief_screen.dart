@@ -107,13 +107,13 @@ class MorningBriefScreen extends ConsumerWidget {
             ),
           )
         else if (brief == null)
-          const Padding(
-            padding: EdgeInsets.all(AppSpacing.space5),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.space5),
             child: EmptyState(
               icon: Icons.info_outline,
               title: 'Nothing to brief yet',
-              body: 'Connect Apple Health or add a blood report and your first '
-                  'brief appears the next morning.',
+              body: 'Connect $healthStoreName or add a blood report and your '
+                  'first brief appears the next morning.',
             ),
           )
         else ...[

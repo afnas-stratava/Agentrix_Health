@@ -81,7 +81,27 @@ class UserProfileNotifier extends Notifier<UserProfile> {
   }
 
   void setGoal(HealthGoal goal) {
-    state = state.copyWith(goal: goal);
+    state = state.copyWith(goals: {goal});
+    _persistNow();
+  }
+
+  void setGoals(Set<HealthGoal> goals) {
+    state = state.copyWith(
+      goals: goals.isEmpty ? {HealthGoal.generalWellness} : goals,
+    );
+    _persistNow();
+  }
+
+  void toggleGoal(HealthGoal goal) {
+    final next = Set<HealthGoal>.from(state.goals);
+    if (next.contains(goal)) {
+      if (next.length > 1) {
+        next.remove(goal);
+      }
+    } else {
+      next.add(goal);
+    }
+    state = state.copyWith(goals: next);
     _persistNow();
   }
 

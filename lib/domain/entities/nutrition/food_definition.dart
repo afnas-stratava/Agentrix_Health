@@ -121,10 +121,8 @@ String? dietaryConflict(
   switch (dietPattern) {
     case DietPattern.vegetarian:
       if (!item.vegetarian) return 'not vegetarian';
-    case DietPattern.eggetarian:
-      if (!item.vegetarian && !item.allergens.contains(Allergy.eggs)) {
-        return 'not vegetarian';
-      }
+    case DietPattern.lactoseFree:
+      if (item.allergens.contains(Allergy.dairy)) return 'contains dairy';
     case DietPattern.vegan:
       if (!item.vegan) return 'not vegan';
     case DietPattern.pescatarian:
@@ -136,8 +134,6 @@ String? dietaryConflict(
     case DietPattern.halal:
       if (item.containsPork) return 'contains pork';
       if (item.containsAlcohol) return 'contains alcohol';
-    case DietPattern.jain:
-      if (!item.jainSafe) return 'not Jain-friendly';
     case DietPattern.omnivore:
       break;
   }

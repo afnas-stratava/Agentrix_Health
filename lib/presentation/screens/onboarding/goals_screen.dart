@@ -22,30 +22,30 @@ class GoalsScreen extends ConsumerStatefulWidget {
 }
 
 class _GoalsScreenState extends ConsumerState<GoalsScreen> {
-  HealthGoal? _goal;
+  Set<HealthGoal>? _goals;
   double? _targetWeight;
 
   @override
   void initState() {
     super.initState();
     final profile = ref.read(userProfileProvider);
-    _goal = profile.goal;
+    _goals = Set<HealthGoal>.from(profile.goals);
     _targetWeight = profile.targetWeightKg;
   }
 
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(userProfileProvider);
-    final goal = _goal ?? profile.goal;
+    final goals = _goals ?? profile.goals;
     final wantsTarget =
-        goal == HealthGoal.loseWeight || goal == HealthGoal.buildMuscle;
+        goals.contains(HealthGoal.loseWeight) || goals.contains(HealthGoal.buildMuscle);
 
     // Start a realistic distance from where they are rather than at an
     // arbitrary round number.
     final weight = profile.weightKg;
     final fallbackTarget = weight == null
         ? 70.0
-        : ((goal == HealthGoal.loseWeight ? weight - 5 : weight + 3) * 2)
+        : ((goals.contains(HealthGoal.loseWeight) ? weight - 5 : weight + 3) * 2)
                   .round() /
               2;
 
@@ -58,7 +58,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
           'to. You can change it any time.',
       onContinue: () {
         final notifier = ref.read(userProfileProvider.notifier);
-        notifier.setGoal(goal);
+        notifier.setGoals(goals);
         if (wantsTarget) {
           notifier.setTargetWeight(_targetWeight ?? fallbackTarget);
         }
@@ -69,8 +69,21 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
           choice.ChoiceRow(
             label: option.label,
             hint: option.hint,
-            selected: goal == option,
-            onTap: () => setState(() => _goal = option),
+            selected: goals.contains(option),
+            isCheckbox: true,
+            onTap: () {
+              setState(() {
+                final next = Set<HealthGoal>.from(goals);
+                if (next.contains(option)) {
+                  if (next.length > 1) {
+                    next.remove(option);
+                  }
+                } else {
+                  next.add(option);
+                }
+                _goals = next;
+              });
+            },
           ),
 
         if (wantsTarget) ...[

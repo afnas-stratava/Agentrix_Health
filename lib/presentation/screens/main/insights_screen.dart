@@ -122,7 +122,7 @@ class InsightsScreen extends ConsumerWidget {
                         ? 'Your telemetry is tracking your baseline and no lab '
                               'value is out of band. We will surface something '
                               'the moment that changes.'
-                        : 'Connect Apple Health and add a blood report — '
+                        : 'Connect $healthStoreName and add a blood report — '
                               'insights appear once there is something to '
                               'correlate.',
                     actionLabel: hasLabData ? null : 'Add a blood report',

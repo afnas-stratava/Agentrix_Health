@@ -7,6 +7,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/status_bar_style.dart';
 import '../../providers/app_stage_provider.dart';
+import '../../providers/health_providers.dart';
 import '../../widgets/canvas_wash.dart';
 
 /// Mirrors `app/onboarding/index.tsx`.
@@ -17,12 +18,12 @@ import '../../widgets/canvas_wash.dart';
 class WelcomeScreen extends ConsumerWidget {
   const WelcomeScreen({super.key});
 
-  static const _points = [
+  static List<(IconData, String, String)> get _points => [
     (
       Icons.monitor_heart_outlined,
       'Your daily telemetry',
       'HRV, resting heart rate, sleep stages, steps and active energy, read '
-          'straight from Apple Health.',
+          'straight from $healthStoreName.',
     ),
     (
       Icons.description_outlined,

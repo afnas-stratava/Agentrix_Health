@@ -21,6 +21,7 @@ import '../../../domain/entities/profile/diet_pattern.dart';
 import '../../../features/cycle/menstrual_phase.dart';
 import '../../../features/nutrition/targets.dart';
 import '../../providers/cycle_phase_provider.dart';
+import '../../providers/health_providers.dart';
 import '../../providers/user_profile_provider.dart';
 import 'main_shell.dart';
 
@@ -170,8 +171,9 @@ class ProfileEditScreen extends ConsumerWidget {
                 choice.ChoiceRow(
                   label: goal.label,
                   hint: goal.hint,
-                  selected: profile.goal == goal,
-                  onTap: () => notifier.setGoal(goal),
+                  selected: profile.goals.contains(goal),
+                  isCheckbox: true,
+                  onTap: () => notifier.toggleGoal(goal),
                 ),
             ],
           ),
@@ -606,9 +608,9 @@ class _CycleCard extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.space3),
                   ] else ...[
                     Text(
-                      'Log the first day of your period and we can place you in '
-                      'a phase. Apple Health records this, but the library we '
-                      'use to read HealthKit does not expose the '
+                      'Log the first day of your period and we can place you '
+                      'in a phase. $healthStoreName records this, but the '
+                      'library we use to read it does not expose the '
                       'menstrual-flow category — so it has to be logged here.',
                       style: AppTextStyles.cardBody.copyWith(height: 1.42),
                     ),

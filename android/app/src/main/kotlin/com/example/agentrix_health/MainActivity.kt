@@ -1,5 +1,6 @@
 package com.example.agentrix_health
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// The `health` plugin's Android permission UI requires a FragmentActivity.
+class MainActivity : FlutterFragmentActivity()

@@ -21,10 +21,10 @@ class UserProfile {
     required this.name,
     required this.age,
     required this.gender,
-    required this.goal,
     required this.cuisines,
     required this.allergies,
     required this.customRestrictions,
+    this.goals = const {HealthGoal.generalWellness},
     this.heightCm,
     this.weightKg,
     this.targetWeightKg,
@@ -43,7 +43,10 @@ class UserProfile {
   final String age;
 
   final Gender gender;
-  final HealthGoal goal;
+  final Set<HealthGoal> goals;
+
+  HealthGoal get goal =>
+      goals.isNotEmpty ? goals.first : HealthGoal.generalWellness;
 
   /// Ordered by preference — the first pick carries the most weight when
   /// suggesting a meal, so this is a list rather than a set.
@@ -71,7 +74,7 @@ class UserProfile {
     name: '',
     age: '',
     gender: Gender.female,
-    goal: HealthGoal.generalWellness,
+    goals: {HealthGoal.generalWellness},
     cuisines: [],
     allergies: {},
     customRestrictions: [],
@@ -117,6 +120,7 @@ class UserProfile {
     String? name,
     String? age,
     Gender? gender,
+    Set<HealthGoal>? goals,
     HealthGoal? goal,
     List<CuisinePreference>? cuisines,
     Set<Allergy>? allergies,
@@ -135,7 +139,7 @@ class UserProfile {
       name: name ?? this.name,
       age: age ?? this.age,
       gender: gender ?? this.gender,
-      goal: goal ?? this.goal,
+      goals: goals ?? (goal != null ? {goal} : this.goals),
       cuisines: cuisines ?? this.cuisines,
       allergies: allergies ?? this.allergies,
       customRestrictions: customRestrictions ?? this.customRestrictions,

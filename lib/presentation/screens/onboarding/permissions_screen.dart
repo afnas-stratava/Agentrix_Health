@@ -24,6 +24,8 @@ class PermissionsScreen extends ConsumerStatefulWidget {
 class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
   bool _requesting = false;
 
+  static String get _storeName => healthStoreName;
+
   static const _scopes = [
     (
       Icons.monitor_heart_outlined,
@@ -61,13 +63,13 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
     return OnboardingScaffold(
       stepIndex: 5,
       stepCount: 6,
-      title: 'Connect Apple Health',
+      title: 'Connect $_storeName',
       intro:
           'We read five metrics and only read them. We never write back to '
-          'Apple Health, and you can skip this step and continue later.',
+          '$_storeName, and you can skip this step and continue later.',
       continueLabel: _requesting
-          ? 'Asking Apple Health…'
-          : 'Connect Apple Health',
+          ? 'Asking $_storeName…'
+          : 'Connect $_storeName',
       canContinue: !_requesting,
       onContinue: _connect,
       secondary: AppButton(

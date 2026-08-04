@@ -421,7 +421,7 @@ class _ProfileSection extends ConsumerWidget {
                             const SizedBox(height: 2),
                             Text(
                               [
-                                profile.goal.label,
+                                profile.goals.map((g) => g.label).join(', '),
                                 profile.effectiveDietPattern.label,
                                 if (profile.weightKg != null)
                                   '${profile.weightKg!.round()} kg',
@@ -512,7 +512,7 @@ class _AppleHealthSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _SectionLabel('Apple Health'),
+        _SectionLabel(healthStoreName),
         SurfaceCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -526,7 +526,7 @@ class _AppleHealthSection extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'HealthKit access',
+                          '$healthStoreName access',
                           style: AppTextStyles.cardTitle.copyWith(fontSize: 15),
                         ),
                         const SizedBox(height: 2),
@@ -558,16 +558,16 @@ class _AppleHealthSection extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.space4),
                 AppButton(
-                  label: 'Connect Apple Health',
+                  label: 'Connect $healthStoreName',
                   block: true,
                   onPressed: () async {
                     HapticFeedback.lightImpact();
                     await requestHealthAccess(ref);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text(
-                            'Apple Health connection attempt completed.',
+                            '$healthStoreName connection attempt completed.',
                           ),
                         ),
                       );
@@ -934,8 +934,8 @@ class _YourDataSection extends ConsumerWidget {
                   ),
                   Expanded(
                     child: Text(
-                      'Your Apple Health readings, food log and stored reports '
-                      'live on this device. A report is sent to Google Gemini '
+                      'Your $healthStoreName readings, food log and stored '
+                      'reports live on this device. A report is sent to Google Gemini '
                       'once, to be read into values, and the assistant sends a '
                       'summary of your data with each question you ask it. '
                       'Nothing is sold, advertised against, or used to train '
