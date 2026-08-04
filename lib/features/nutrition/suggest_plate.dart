@@ -9,22 +9,22 @@ import 'food_database.dart';
 /// Ported from `src/features/nutrition/recognize.ts`.
 ///
 /// ───────────────────────────────────────────────────────────────────────────
-/// THIS DOES NOT LOOK AT THE PHOTO. There is no vision model in this build.
+/// THIS DOES NOT LOOK AT THE PHOTO. It is the profile-ranked path.
+///
+/// [GeminiMealVision] is the one that reads the image. This file is what
+/// answers when there is no key configured, the call fails, or the model looked
+/// and found no food — and what fills the list before any photo is taken at all.
 ///
 /// What it does is narrow the food table down to the handful of items a given
 /// user plausibly ate at a given meal — using their cuisine preferences, dietary
 /// constraints, the time of day and their own logging history — and let them
-/// confirm in two taps. The photo is still captured and attached to the entry, so
-/// the log is visual; the macros come from the user's confirmation, not from a
-/// guess we dressed up as recognition.
+/// confirm in two taps.
 ///
-/// The UI must therefore never say "we identified your food". It says "what's on
-/// the plate?" and pre-selects likely answers. [suggestionBasis] is rendered
-/// verbatim in the sheet so the mechanism is never misrepresented.
-///
-/// To make this real, implement a vision call that returns the same
-/// [PlateSuggestion] list; every call site already treats confidence below 1 as
-/// "needs confirming", so nothing else changes.
+/// Neither path may say "we identified your food". Both end in the same
+/// confirm-and-adjust list, and each carries its own basis string — this one
+/// [suggestionBasis], the vision one `photoReadBasis` — rendered verbatim in the
+/// sheet so the user always knows which of the two produced the list in front of
+/// them. Swapping one for the other silently is the failure mode to avoid.
 /// ───────────────────────────────────────────────────────────────────────────
 const String suggestionBasis =
     'Ranked from your cuisines, diet and the time of day — not from the photo. '
@@ -35,6 +35,7 @@ class PlateSuggestion {
     required this.food,
     required this.confidence,
     required this.reason,
+    this.portions = 1,
   });
 
   final FoodDefinition food;
@@ -45,6 +46,10 @@ class PlateSuggestion {
 
   /// Why this surfaced, shown as a caption.
   final String reason;
+
+  /// Multiples of [FoodDefinition.portionLabel]. The ranked path cannot know how
+  /// much is on the plate and always says one; only the vision path estimates.
+  final double portions;
 }
 
 /// Which foods make sense in which slot.

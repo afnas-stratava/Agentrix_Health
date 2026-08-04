@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
@@ -24,6 +24,14 @@ class GmailLabSource {
     : _http = httpClient ?? http.Client();
 
   final http.Client _http;
+
+  /// Google sign-in is only configured for Apple platforms right now —
+  /// Android's `google-services.json` is missing the SHA-fingerprinted client
+  /// Google sign-in needs, so attempting this there fails with `ApiException:
+  /// 10` rather than a clean denial. Callers gate on this instead of letting
+  /// the attempt happen and surfacing a confusing failure.
+  static bool get isSupportedPlatform =>
+      !kIsWeb && (Platform.isIOS || Platform.isMacOS);
 
   /// Restricted scope. Google requires OAuth verification plus an annual CASA
   /// assessment before this can be granted outside the project's test users.
@@ -56,6 +64,11 @@ class GmailLabSource {
   /// Returns null when the user declines — a refusal, not an error, so callers
   /// show the manual upload path rather than a failure state.
   Future<Map<String, String>?> _authHeaders({bool prompt = true}) async {
+    // Belt-and-braces: entry points are gated on [isSupportedPlatform] so this
+    // should never fire, but attempting the handshake on Android returns the
+    // opaque `ApiException: 10` rather than a clean denial.
+    if (!isSupportedPlatform) return null;
+
     await _ensureInitialized();
 
     // Reuses the session the user already has if there is one, so granting
