@@ -42,15 +42,24 @@ enum AppStage {
   };
 }
 
+/// The stage to land on at cold start. Defaults to [AppStage.welcome]; `main.dart`
+/// overrides this once, before `runApp`, when Firebase Auth's persisted session
+/// already belongs to a real (non-anonymous) account — that user signed in
+/// once and should not see onboarding again on every relaunch, only after an
+/// explicit sign-out.
+final initialAppStageProvider = Provider<AppStage>(
+  (ref) => AppStageNotifier._skipOnboarding ? AppStage.main : AppStage.welcome,
+);
+
 class AppStageNotifier extends Notifier<AppStage> {
-  /// Starts at [AppStage.welcome].
+  /// Starts at [initialAppStageProvider].
   ///
   /// To jump straight to the main app while working on a tab, run with
   /// `--dart-define=SKIP_ONBOARDING=true` rather than editing this default —
   /// hardcoding `main` here silently ships an app with no onboarding, and takes
   /// the onboarding widget tests down with it.
   @override
-  AppStage build() => _skipOnboarding ? AppStage.main : AppStage.welcome;
+  AppStage build() => ref.read(initialAppStageProvider);
 
   static const bool _skipOnboarding = bool.fromEnvironment('SKIP_ONBOARDING');
 

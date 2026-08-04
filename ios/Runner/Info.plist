@@ -38,6 +38,13 @@
 	     in the same commit that adds the first write. -->
 	<key>NSHealthShareUsageDescription</key>
 	<string>Agentrix Health reads your heart-rate variability, resting heart rate, sleep and activity to score your daily readiness and to correlate it with your blood work.</string>
+	<!-- Required even though this app never writes to Health. The `health`
+	     plugin links HealthKit's write APIs, and App Store validation rejects
+	     the build for a missing purpose string whenever those symbols are
+	     present — regardless of whether they are called. The entitlement
+	     requests read access only. -->
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Agentrix Health never writes to Apple Health. It only reads your existing data, and no entry is ever created, changed or deleted.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Find restaurants near you and rank dishes that fit today's plan. Your location is used for the search and never stored.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

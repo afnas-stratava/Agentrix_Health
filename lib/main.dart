@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'firebase_options.dart';
+import 'presentation/providers/app_stage_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +15,11 @@ void main() async {
   // SystemUiOverlayStyle (see StatusBarStyle) so the app's own background
   // shows through.
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  // Set once Firebase confirms the persisted session belongs to a real
+  // account, so a returning user lands straight in the app instead of
+  // walking through sign-in and onboarding again on every launch.
+  var returningAccount = false;
 
   // Sign-in is on the golden path now (AppStage.account sits second in
   // onboarding), so Firebase is no longer optional. It is still initialized
@@ -29,12 +35,23 @@ void main() async {
     // AccountController *links* the Apple or Google credential onto this same
     // uid so none of it is stranded. Removing this would orphan every profile
     // written before the user reaches the account step.
-    if (FirebaseAuth.instance.currentUser == null) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
       await FirebaseAuth.instance.signInAnonymously();
+    } else {
+      returningAccount = !user.isAnonymous;
     }
   } catch (error) {
     debugPrint('Firebase setup failed, continuing without cloud sync: $error');
   }
 
-  runApp(const ProviderScope(child: AgentrixHealthApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        if (returningAccount)
+          initialAppStageProvider.overrideWithValue(AppStage.main),
+      ],
+      child: const AgentrixHealthApp(),
+    ),
+  );
 }
