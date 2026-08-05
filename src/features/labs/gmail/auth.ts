@@ -1,6 +1,6 @@
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { env } from '@/lib/env';
+import { env, isOfflineMode } from '@/lib/env';
 import { log } from '@/lib/logger';
 
 // Required so the in-app browser hands control back after the redirect.
@@ -70,10 +70,18 @@ export interface AuthorizationGrant {
  * cannot leak through a crash report or a state snapshot.
  */
 export async function authorizeGmail(): Promise<AuthorizationGrant> {
-  if (!env.googleClientId) throw new GmailNotConfigured();
-
   // Uses the app's `scheme` from app.config.ts, e.g. `vitals://oauth`.
   const redirectUri = AuthSession.makeRedirectUri({ scheme: 'vitals', path: 'oauth' });
+
+  // Offline mode never contacts Google. The fixture client ignores the grant it
+  // is handed, so returning a placeholder keeps the connect flow demoable with
+  // no Cloud project — mirroring the offline branches in ./client.
+  if (isOfflineMode) {
+    log.info('labs', 'Offline mode — skipping Google authorization, using fixtures');
+    return { code: 'offline-fixture-code', codeVerifier: 'offline-fixture-verifier', redirectUri };
+  }
+
+  if (!env.googleClientId) throw new GmailNotConfigured();
 
   const request = new AuthSession.AuthRequest({
     clientId: env.googleClientId,

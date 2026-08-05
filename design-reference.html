@@ -1,0 +1,1202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vitals Health — Design Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+/* ==========================================================================
+   Vitals Health — design reference
+   Tokens mirrored from tailwind.config.js and src/theme/colors.ts.
+   Any change there must be reflected here; this file is documentation,
+   not a source of truth.
+   ========================================================================== */
+:root{
+  /* Surfaces */
+  --canvas:#F4FAF1;
+  --surface:#FFFFFF;
+  --hairline:#E0ECDA;
+  /* Ink */
+  --ink:#13281C;
+  --muted:#5C6E63;
+  --faint:#8D9E92;
+  /* Brand ramp */
+  --brand-50:#EFF8F1;  --brand-100:#D9EEDF; --brand-200:#B4DDC1;
+  --brand-300:#84C69C; --brand-400:#4FA873; --brand-500:#2E8455;
+  --brand-600:#226A44; --brand-700:#1B5436; --brand-800:#16412B;
+  --brand-900:#0F2E1E;
+  /* Accent */
+  --accent:#BFF049; --accent-soft:#E8FAC4; --accent-strong:#A6D934;
+  /* On-brand text */
+  --on-brand:#FFFFFF;
+  --on-brand-muted:rgba(255,255,255,.72);
+  --on-brand-faint:rgba(255,255,255,.45);
+  /* Status ramp */
+  --optimal:#16A34A; --normal:#0EA5E9; --borderline:#F59E0B;
+  --abnormal:#F97316; --critical:#E11D48;
+  /* Radii */
+  --r-card:24px; --r-pill:999px;
+  /* Page chrome (documentation only — not app tokens) */
+  --page:#0B1410;
+  --page-2:#111E17;
+  --page-line:rgba(255,255,255,.10);
+  --page-ink:#EAF3EC;
+  --page-muted:#93A89A;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--page);
+  color:var(--page-ink);
+  font-family:'Inter Tight','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-weight:400;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{margin:0;line-height:1.15;letter-spacing:-.02em}
+p{margin:0}
+code{font-family:Menlo,ui-monospace,SFMono-Regular,monospace;font-size:.86em}
+
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+
+/* ---------- Doc header ---------- */
+.masthead{
+  border-bottom:1px solid var(--page-line);
+  background:
+    radial-gradient(90% 140% at 88% -10%, rgba(191,240,73,.10), transparent 60%),
+    radial-gradient(70% 120% at 8% 0%, rgba(46,132,85,.28), transparent 60%);
+  padding:64px 0 44px;
+}
+.eyebrow{
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:16px;
+}
+.masthead h1{font-size:clamp(34px,6vw,60px);font-weight:900;letter-spacing:-.035em}
+.masthead p{margin-top:16px;max-width:60ch;color:var(--page-muted);font-size:16px}
+.meta{
+  margin-top:28px;display:flex;flex-wrap:wrap;gap:8px;
+}
+.meta span{
+  font-size:12px;font-weight:600;color:var(--page-ink);
+  border:1px solid var(--page-line);border-radius:var(--r-pill);
+  padding:6px 13px;background:rgba(255,255,255,.04);
+}
+
+/* ---------- Doc nav ---------- */
+.docnav{
+  position:sticky;top:0;z-index:20;
+  background:rgba(11,20,16,.86);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--page-line);
+}
+.docnav ul{
+  display:flex;gap:4px;list-style:none;margin:0;padding:0;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+}
+.docnav a{
+  display:block;padding:14px 14px;white-space:nowrap;
+  color:var(--page-muted);text-decoration:none;
+  font-size:13px;font-weight:600;
+}
+.docnav a:hover{color:var(--page-ink)}
+
+/* ---------- Sections ---------- */
+section{padding:64px 0;border-bottom:1px solid var(--page-line)}
+.sec-head{margin-bottom:36px;max-width:70ch}
+.sec-head h2{font-size:clamp(24px,3.4vw,34px);font-weight:800}
+.sec-head p{margin-top:12px;color:var(--page-muted);font-size:15px}
+.sec-num{
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--brand-300);margin-bottom:10px;
+}
+
+/* ---------- Swatches ---------- */
+.swatch-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+.swatch{
+  border:1px solid var(--page-line);border-radius:16px;overflow:hidden;
+  background:var(--page-2);
+}
+.swatch .chip{height:72px}
+.swatch .info{padding:11px 13px}
+.swatch .name{font-size:13px;font-weight:700}
+.swatch .hex{font-family:Menlo,monospace;font-size:11px;color:var(--page-muted);margin-top:3px}
+.swatch .use{font-size:11.5px;color:var(--page-muted);margin-top:7px;line-height:1.45}
+
+.ramp{display:flex;border-radius:14px;overflow:hidden;border:1px solid var(--page-line)}
+.ramp div{flex:1;height:60px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-size:10px;font-weight:700}
+
+/* ---------- Type specimens ---------- */
+.type-row{
+  display:grid;grid-template-columns:180px 1fr;gap:24px;align-items:baseline;
+  padding:20px 0;border-top:1px solid var(--page-line);
+}
+.type-row:first-of-type{border-top:0}
+.type-meta{font-family:Menlo,monospace;font-size:11.5px;color:var(--page-muted);line-height:1.7}
+.type-meta b{display:block;font-family:'Inter Tight',sans-serif;font-size:13px;color:var(--page-ink);margin-bottom:5px}
+.spec{color:#fff}
+
+/* ---------- Phone frames ---------- */
+.screens{
+  display:grid;gap:44px 32px;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  justify-items:center;
+}
+.screen-block{width:100%;max-width:360px}
+.screen-cap{margin-bottom:16px}
+.screen-cap h3{font-size:17px;font-weight:700}
+.screen-cap p{margin-top:6px;font-size:13px;color:var(--page-muted);line-height:1.5}
+.screen-cap code{color:var(--brand-300)}
+
+.phone{
+  width:100%;aspect-ratio:390/844;
+  background:var(--canvas);
+  border-radius:44px;
+  border:9px solid #06110C;
+  box-shadow:0 30px 70px -20px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.07);
+  overflow:hidden;position:relative;
+  container-type:inline-size;
+}
+/* Everything inside a phone is sized in cqw so the mock scales with the frame.
+   390pt viewport => 1cqw = 3.9pt. */
+.vp{
+  position:absolute;inset:0;
+  font-size:2.564cqw; /* 10pt base => rem-like scale via em */
+  color:var(--ink);
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.vp::before{ /* soft brand bloom, as in the app's canvas */
+  content:'';position:absolute;width:120%;height:46%;left:-10%;top:-16%;
+  background:radial-gradient(60% 60% at 50% 50%, rgba(132,198,156,.30), transparent 70%);
+  pointer-events:none;
+}
+.vp::after{
+  content:'';position:absolute;width:90%;height:32%;right:-24%;bottom:6%;
+  background:radial-gradient(60% 60% at 50% 50%, rgba(191,240,73,.16), transparent 70%);
+  pointer-events:none;
+}
+
+/* status bar */
+.statusbar{
+  position:relative;z-index:2;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:1.5em 2.2em .2em;font-weight:700;font-size:1.55em;
+}
+.statusbar .ind{display:flex;gap:.45em;align-items:center}
+.statusbar .bar{width:1.7em;height:.85em;border:.14em solid var(--ink);border-radius:.28em;position:relative}
+.statusbar .bar::after{content:'';position:absolute;inset:.14em;background:var(--ink);border-radius:.1em}
+.wifi{width:1.6em;height:1.15em;background:var(--ink);
+  clip-path:polygon(50% 100%,0 26%,50% 62%,100% 26%)}
+
+.scroll{position:relative;z-index:1;flex:1;overflow:hidden;padding:0 0 2em}
+
+/* ---------- App primitives (mirrors src/components/ui) ---------- */
+.px{padding-left:2.05em;padding-right:2.05em}
+.card{
+  background:var(--surface);border-radius:2.46em; /* 24px */
+  padding:1.5em 1.6em;
+}
+.hair{border:.1em solid var(--hairline)}
+.sect{
+  display:flex;align-items:center;justify-content:space-between;
+  margin:2.3em 0 1.1em;
+}
+.sect h4{
+  font-size:1.18em;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+}
+.sect .act{font-size:1.15em;font-weight:600;color:var(--brand-600)}
+
+.greet-date{font-size:1.35em;color:var(--muted);font-weight:500}
+.greet{font-size:4.1em;font-weight:900;letter-spacing:-.035em;margin-top:.06em}
+
+.iconbtn{
+  width:4.9em;height:4.9em;border-radius:50%;background:var(--surface);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 .2em .8em rgba(19,40,28,.07);
+}
+.iconbtn svg{width:2.2em;height:2.2em;stroke:var(--ink);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Brief card */
+.brief{
+  background:#EDF7E8;border:.1em solid #CFE7C4;border-radius:2.05em;
+  padding:1.35em 1.5em;
+}
+.brief-top{display:flex;align-items:center;gap:.6em}
+.brief-top span{
+  flex:1;font-size:1.05em;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--brand-600);
+}
+.brief h5{font-size:1.55em;font-weight:600;margin-top:.5em}
+.brief p{font-size:1.25em;color:var(--muted);margin-top:.25em}
+
+/* Hero */
+.hero{
+  border-radius:2.46em;padding:1.8em 1.9em 1.6em;
+  background:linear-gradient(150deg,#2E8455 0%,#1B5436 100%);
+  color:var(--on-brand);position:relative;overflow:hidden;
+}
+.hero-badge{
+  display:inline-block;background:rgba(255,255,255,.16);
+  border-radius:var(--r-pill);padding:.5em 1.1em;
+  font-size:1.02em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+}
+.hero h3{font-size:3.6em;font-weight:900;letter-spacing:-.03em;margin-top:.35em}
+.hero .sub{font-size:1.35em;color:var(--on-brand-muted);margin-top:.1em}
+.hero-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1em}
+.hero-div{height:.1em;background:rgba(255,255,255,.20);margin:1.7em 0 1.1em}
+.hero-foot{font-size:1.28em;color:var(--on-brand-muted)}
+.gauge{width:11.5em;height:9em;flex:none;margin-top:.4em}
+
+/* Stat tiles */
+.tiles{display:flex;gap:.9em}
+.tile{
+  flex:1;background:var(--surface);border-radius:2.05em;padding:1.3em 1.35em;
+  min-height:13.5em;display:flex;flex-direction:column;justify-content:space-between;
+}
+.tile-top{display:flex;align-items:center;justify-content:space-between}
+.tile-ic{width:3.4em;height:3.4em;border-radius:1.15em;background:var(--brand-50);display:flex;align-items:center;justify-content:center}
+.tile-ic svg{width:1.8em;height:1.8em;stroke:var(--brand-600);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.tile-delta{font-size:1.12em;font-weight:700}
+.tile-val{font-size:3.4em;font-weight:800;letter-spacing:-.035em;line-height:1}
+.tile-val small{font-size:.36em;font-weight:600;color:var(--faint);letter-spacing:0;margin-left:.35em}
+.tile-lbl{font-size:1.12em;color:var(--muted);font-weight:500;margin-top:.15em}
+
+.chips{display:flex;gap:.7em;margin-top:.9em}
+.chip{
+  flex:1;background:var(--surface);border-radius:1.5em;padding:.9em .8em;text-align:center;
+}
+.chip b{display:block;font-size:1.6em;font-weight:800;letter-spacing:-.02em}
+.chip span{display:block;font-size:.98em;color:var(--faint);font-weight:600;margin-top:.15em}
+
+/* Rows / list cards */
+.row{display:flex;align-items:center;gap:1.15em;padding:1.25em 1.5em}
+.row+.row{border-top:.1em solid var(--hairline)}
+.row-ic{width:4.4em;height:4.4em;border-radius:1.45em;background:#EFF3EF;display:flex;align-items:center;justify-content:center;flex:none}
+.row-ic svg{width:2.1em;height:2.1em;stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.row-txt{flex:1;min-width:0}
+.row-txt b{display:block;font-size:1.7em;font-weight:700;letter-spacing:-.01em}
+.row-txt span{display:block;font-size:1.3em;color:var(--muted);margin-top:.1em}
+.row .chev{width:1.6em;height:1.6em;stroke:var(--faint);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+.pill{
+  font-size:1.15em;font-weight:700;border-radius:var(--r-pill);
+  padding:.45em 1em;white-space:nowrap;flex:none;
+}
+.pill-warn{color:var(--borderline);background:#FEF3E2;border:.09em solid #F8D8A0}
+.pill-off{color:var(--faint);background:#EFF3EF}
+.pill-ok{color:var(--optimal);background:#E7F7EC}
+
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:.6em;
+  background:var(--accent);color:var(--ink);
+  border-radius:var(--r-pill);padding:1.15em;font-size:1.65em;font-weight:700;
+}
+.btn-ghost{background:transparent;border:.11em solid var(--hairline);color:var(--ink)}
+.helper{font-size:1.25em;color:var(--muted);line-height:1.5;margin-top:1.1em}
+
+.toggle{width:4.6em;height:2.7em;border-radius:var(--r-pill);background:var(--brand-900);position:relative;flex:none}
+.toggle::after{content:'';position:absolute;width:2.1em;height:2.1em;border-radius:50%;background:#fff;top:.3em;right:.3em}
+.toggle.off{background:#D6DED8}
+.toggle.off::after{right:auto;left:.3em}
+
+/* Progress */
+.bar{height:.85em;border-radius:var(--r-pill);background:#E7EFE7;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:var(--r-pill);background:var(--accent-strong)}
+
+/* Biomarker row */
+.bio{display:flex;align-items:center;gap:1em;padding:1.15em 0}
+.bio+.bio{border-top:.1em solid var(--hairline)}
+.bio .dot{width:.85em;height:.85em;border-radius:50%;flex:none}
+.bio .nm{flex:1;font-size:1.42em;font-weight:600}
+.bio .vl{font-size:1.42em;font-weight:800;letter-spacing:-.01em}
+.bio .un{font-size:1.05em;color:var(--faint);font-weight:600;margin-left:.3em}
+
+/* Insight card */
+.insight{background:var(--surface);border-radius:2.05em;padding:1.4em 1.5em;margin-bottom:.9em}
+.insight .sev{
+  display:inline-block;font-size:1em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  padding:.4em .85em;border-radius:var(--r-pill);
+}
+.insight h5{font-size:1.72em;font-weight:700;margin-top:.55em;letter-spacing:-.015em}
+.insight p{font-size:1.3em;color:var(--muted);margin-top:.35em;line-height:1.45}
+
+/* Tab bar */
+.tabbar{
+  position:absolute;left:1.6em;right:1.6em;bottom:1.5em;height:6.6em;z-index:5;
+  background:#fff;border-radius:var(--r-pill);
+  box-shadow:0 .8em 2.4em rgba(19,40,28,.16);
+  display:flex;align-items:center;justify-content:space-around;padding:0 1.4em;
+}
+.tabbar svg{width:2.5em;height:2.5em;stroke:var(--faint);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tab{display:flex;flex-direction:column;align-items:center;gap:.25em;width:5.2em}
+.tab.on svg{stroke:var(--brand-600)}
+.tab.on{color:var(--brand-600)}
+.tab span{font-size:.95em;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:0}
+.tab.on span{opacity:1}
+.fab{
+  width:6.2em;height:6.2em;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;flex:none;
+  box-shadow:0 .5em 1.4em rgba(166,217,52,.5);border:.42em solid #F7FBF3;
+  margin-top:-1.4em;
+}
+.fab svg{width:2.7em;height:2.7em;stroke:var(--ink);stroke-width:2.6}
+
+/* Empty state */
+.empty{text-align:center;padding:3.4em 2em}
+.empty .ic{width:6.4em;height:6.4em;border-radius:2.2em;background:var(--brand-50);margin:0 auto 1.3em;display:flex;align-items:center;justify-content:center}
+.empty .ic svg{width:2.8em;height:2.8em;stroke:var(--brand-500);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.empty h5{font-size:1.85em;font-weight:700}
+.empty p{font-size:1.3em;color:var(--muted);margin-top:.4em;line-height:1.5}
+
+/* Skeleton */
+.sk{background:#E9F0E7;border-radius:2.05em}
+
+/* ---------- Component gallery ---------- */
+.gal{display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.gal-item{
+  background:var(--canvas);border:1px solid var(--page-line);border-radius:20px;
+  padding:26px;container-type:inline-size;color:var(--ink);
+}
+.gal-item .lbl{
+  font-family:Menlo,monospace;font-size:11px;color:var(--muted);
+  margin-bottom:16px;display:block;
+}
+.gal-item .stage{font-size:2.6cqw}
+
+/* ---------- Notes ---------- */
+.note{
+  border-left:3px solid var(--accent);background:rgba(191,240,73,.07);
+  padding:16px 20px;border-radius:0 12px 12px 0;margin-top:26px;
+}
+.note b{color:var(--accent)}
+.note p{color:var(--page-muted);font-size:14px;margin-top:6px;line-height:1.6}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+.tablewrap{overflow-x:auto;border:1px solid var(--page-line);border-radius:14px}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--page-line);white-space:nowrap}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--page-muted);font-weight:700}
+tr:last-child td{border-bottom:0}
+td code{color:var(--brand-300)}
+
+footer{padding:44px 0 70px;color:var(--page-muted);font-size:13px}
+
+@media (max-width:640px){
+  section{padding:44px 0}
+  .type-row{grid-template-columns:1fr;gap:10px}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Design reference · v1.0.0</div>
+    <h1>Vitals Health</h1>
+    <p>
+      A static reference for the health-correlation app: the token system, the type scale, and
+      the primary screens rendered at device proportions. Extracted from the live React Native
+      source so the values here match what ships.
+    </p>
+    <div class="meta">
+      <span>Expo SDK 55</span>
+      <span>NativeWind</span>
+      <span>Inter Tight</span>
+      <span>390 × 844 pt</span>
+      <span>Light theme only</span>
+    </div>
+  </div>
+</header>
+
+<nav class="docnav">
+  <div class="wrap">
+    <ul>
+      <li><a href="#color">Colour</a></li>
+      <li><a href="#type">Typography</a></li>
+      <li><a href="#form">Shape &amp; depth</a></li>
+      <li><a href="#screens">Screens</a></li>
+      <li><a href="#components">Components</a></li>
+      <li><a href="#rules">Rules</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ================= COLOUR ================= -->
+<section id="color">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">01</div>
+      <h2>Colour</h2>
+      <p>
+        A near-white canvas with a green cast, a deep forest brand for focal surfaces, and a
+        single lime accent reserved for action. Status colours are a separate ramp and never
+        borrow from the brand.
+      </p>
+    </div>
+
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:14px">Surfaces &amp; ink</h3>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="chip" style="background:#F4FAF1"></div><div class="info"><div class="name">canvas</div><div class="hex">#F4FAF1</div><div class="use">App background. Near-white, green cast.</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#FFFFFF"></div><div class="info"><div class="name">surface</div><div class="hex">#FFFFFF</div><div class="use">Cards and sheets. Elevation is the only separator.</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#E0ECDA"></div><div class="info"><div class="name">hairline</div><div class="hex">#E0ECDA</div><div class="use">1px dividers inside cards.</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#13281C"></div><div class="info"><div class="name">ink</div><div class="hex">#13281C</div><div class="use">Primary text. Near-black, green-shifted.</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#5C6E63"></div><div class="info"><div class="name">muted</div><div class="hex">#5C6E63</div><div class="use">Secondary copy, section headers.</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#8D9E92"></div><div class="info"><div class="name">faint</div><div class="hex">#8D9E92</div><div class="use">Units, inactive icons, meta.</div></div></div>
+    </div>
+
+    <h3 style="font-size:15px;font-weight:700;margin:36px 0 14px">Brand ramp</h3>
+    <div class="ramp">
+      <div style="background:#EFF8F1;color:#13281C">50</div>
+      <div style="background:#D9EEDF;color:#13281C">100</div>
+      <div style="background:#B4DDC1;color:#13281C">200</div>
+      <div style="background:#84C69C;color:#13281C">300</div>
+      <div style="background:#4FA873;color:#fff">400</div>
+      <div style="background:#2E8455;color:#fff">500</div>
+      <div style="background:#226A44;color:#fff">600</div>
+      <div style="background:#1B5436;color:#fff">700</div>
+      <div style="background:#16412B;color:#fff">800</div>
+      <div style="background:#0F2E1E;color:#fff">900</div>
+    </div>
+    <p style="color:var(--page-muted);font-size:13.5px;margin-top:12px">
+      <code>600</code> carries active navigation and inline links. <code>500 → 700</code> is the hero
+      gradient. Deliberately darker and less saturated than <code>optimal</code>, so “brand” and
+      “this biomarker is healthy” never read as the same signal.
+    </p>
+
+    <h3 style="font-size:15px;font-weight:700;margin:36px 0 14px">Accent</h3>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="chip" style="background:#BFF049"></div><div class="info"><div class="name">accent</div><div class="hex">#BFF049</div><div class="use">Primary CTA, FAB, gauge fill. Always on ink.</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#E8FAC4"></div><div class="info"><div class="name">accent.soft</div><div class="hex">#E8FAC4</div><div class="use">Selected pills, subtle fills.</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#A6D934"></div><div class="info"><div class="name">accent.strong</div><div class="hex">#A6D934</div><div class="use">Progress fill, pressed state.</div></div></div>
+    </div>
+
+    <h3 style="font-size:15px;font-weight:700;margin:36px 0 14px">Status ramp</h3>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="chip" style="background:#16A34A"></div><div class="info"><div class="name">optimal</div><div class="hex">#16A34A</div><div class="use">Optimal</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#0EA5E9"></div><div class="info"><div class="name">normal</div><div class="hex">#0EA5E9</div><div class="use">In range · For context</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#F59E0B"></div><div class="info"><div class="name">borderline</div><div class="hex">#F59E0B</div><div class="use">Above/below optimal · Keep an eye on</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#F97316"></div><div class="info"><div class="name">abnormal</div><div class="hex">#F97316</div><div class="use">High/Low · Act on this</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#E11D48"></div><div class="info"><div class="name">critical</div><div class="hex">#E11D48</div><div class="use">Critically high/low · See a clinician</div></div></div>
+    </div>
+
+    <div class="note">
+      <b>The accent rule</b>
+      <p>
+        Lime is never paired with white text — contrast fails. It carries <code>ink</code> only.
+        On the deep-green hero, text uses <code>on-brand</code> at 100% / 72% / 45% opacity rather
+        than the grey ink ramp.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TYPOGRAPHY ================= -->
+<section id="type">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <h2>Typography</h2>
+      <p>
+        One family — Inter Tight — across six weights. Numeric readouts get their own tightened
+        scale, because a metric and a paragraph should not share tracking.
+      </p>
+    </div>
+
+    <div class="type-row">
+      <div class="type-meta"><b>Greeting</b>34px / 900<br>-0.035em</div>
+      <div class="spec" style="font-size:34px;font-weight:900;letter-spacing:-.035em">Good morning</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>metric-lg</b>46 / 48px<br>-1.8px</div>
+      <div class="spec" style="font-size:46px;line-height:48px;font-weight:800;letter-spacing:-1.8px">78<span style="font-size:18px;color:var(--page-muted);letter-spacing:0"> ms</span></div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>metric</b>34 / 36px<br>-1.2px</div>
+      <div class="spec" style="font-size:34px;line-height:36px;font-weight:800;letter-spacing:-1.2px">62<span style="font-size:14px;color:var(--page-muted);letter-spacing:0"> bpm</span></div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>metric-sm</b>22 / 24px<br>-0.6px</div>
+      <div class="spec" style="font-size:22px;line-height:24px;font-weight:800;letter-spacing:-.6px">7.4<span style="font-size:11px;color:var(--page-muted);letter-spacing:0"> h</span></div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Row title</b>17px / 700</div>
+      <div class="spec" style="font-size:17px;font-weight:700">HealthKit access</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Body</b>15px / 600</div>
+      <div class="spec" style="font-size:15px;font-weight:600">Building your baseline.</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Secondary</b>13px / 400<br>muted</div>
+      <div class="spec" style="font-size:13px;color:var(--page-muted)">Moderate session, 45 min · Eat for your goal</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Section header</b>11px / 700<br>0.09em · uppercase</div>
+      <div class="spec" style="font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--page-muted)">Your signals</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Eyebrow</b>10px / 700<br>0.11em · uppercase</div>
+      <div class="spec" style="font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--brand-300)">Your brief for today</div>
+    </div>
+
+    <div class="note">
+      <b>Why family-swapping matters</b>
+      <p>
+        React Native resolves a font by family name only, so <code>font-bold</code> swaps the face
+        to <code>InterTight_700Bold</code> rather than leaning on <code>font-weight</code>. A weight
+        utility with no matching loaded face silently renders as the system font.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SHAPE ================= -->
+<section id="form">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <h2>Shape &amp; depth</h2>
+      <p>Two radii do almost all the work. Separation comes from elevation and canvas contrast, not borders.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Token</th><th>Value</th><th>Applied to</th></tr></thead>
+        <tbody>
+          <tr><td><code>rounded-card</code></td><td>24px</td><td>Hero, primary cards, stat tiles</td></tr>
+          <tr><td><code>rounded-2xl</code></td><td>16px</td><td>Signal chips, nested surfaces</td></tr>
+          <tr><td><code>rounded-pill</code></td><td>999px</td><td>Buttons, badges, tab bar, toggles</td></tr>
+          <tr><td>Icon container</td><td>44px · r14</td><td>Settings rows, list leading icons</td></tr>
+          <tr><td>Circular button</td><td>48px</td><td>Header actions (sync, settings)</td></tr>
+          <tr><td>Screen gutter</td><td>20px</td><td>All horizontal padding</td></tr>
+          <tr><td>Section rhythm</td><td>20px</td><td>Gap between stacked sections</td></tr>
+          <tr><td>Opacity scale</td><td>.04 .06 .08 .12 .14 .18</td><td>Sub-5% tints for subtle fills</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <b>No dark theme</b>
+      <p>
+        Tokens are literal hex, deliberately not CSS variables — NativeWind cannot statically
+        evaluate a <code>var()</code> holding an RGB triple inside <code>rgb()</code>, and every
+        surface would render transparent. Adding dark mode means a <code>dark:</code> variant per
+        token, not reviving a variable layer.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SCREENS ================= -->
+<section id="screens">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">04</div>
+      <h2>Screens</h2>
+      <p>
+        The five tab destinations at device proportions (390 × 844 pt). Content shown is the
+        seeded demo persona, so every surface is populated rather than empty.
+      </p>
+    </div>
+
+    <div class="screens">
+
+      <!-- ===== TODAY ===== -->
+      <div class="screen-block">
+        <div class="screen-cap">
+          <h3>Today</h3>
+          <p>Hero-led dashboard. Readiness dominates; signals and fuel follow. <code>app/(tabs)/today.tsx</code></p>
+        </div>
+        <div class="phone"><div class="vp">
+          <div class="statusbar"><span>9:41</span><span class="ind"><span class="wifi"></span><span class="bar"></span></span></div>
+          <div class="scroll">
+            <div class="px" style="display:flex;align-items:flex-start;justify-content:space-between;gap:1em;margin-top:.6em">
+              <div>
+                <div class="greet-date">Thursday, 30 July · synced 4m ago</div>
+                <div class="greet">Good morning</div>
+              </div>
+              <div style="display:flex;gap:.7em;margin-top:.8em">
+                <div class="iconbtn"><svg viewBox="0 0 24 24"><path d="M21 2v6h-6M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 12a9 9 0 0 1 15-6.7L21 8"/></svg></div>
+                <div class="iconbtn"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg></div>
+              </div>
+            </div>
+
+            <div class="px" style="margin-top:1.5em">
+              <div class="brief">
+                <div class="brief-top">
+                  <svg viewBox="0 0 24 24" style="width:1.6em;height:1.6em;stroke:#226A44;fill:none;stroke-width:2.2;stroke-linejoin:round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>
+                  <span>Your brief for today</span>
+                  <svg viewBox="0 0 24 24" style="width:1.5em;height:1.5em;stroke:#226A44;fill:none;stroke-width:2.4;stroke-linecap:round"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+                <h5>Ferritin is limiting you.</h5>
+                <p>Moderate session, 45 min · Iron-forward meals</p>
+              </div>
+            </div>
+
+            <div class="px" style="margin-top:1.4em">
+              <div class="hero">
+                <div class="hero-row">
+                  <div>
+                    <div class="hero-badge">Suppressed</div>
+                    <h3>Readiness</h3>
+                    <div class="sub">HRV down 14% on baseline</div>
+                  </div>
+                  <svg class="gauge" viewBox="0 0 120 96">
+                    <g stroke-linecap="round">
+                      <!-- tick arc -->
+                      <g>
+                        <path d="M14 84 A48 48 0 0 1 106 84" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3" stroke-dasharray="1.6 6.4"/>
+                        <path d="M14 84 A48 48 0 0 1 74 39" fill="none" stroke="#BFF049" stroke-width="3.4" stroke-dasharray="1.6 6.4"/>
+                      </g>
+                    </g>
+                    <text x="60" y="72" text-anchor="middle" fill="#fff" font-size="30" font-weight="900" font-family="Inter Tight, sans-serif" letter-spacing="-1.2">61</text>
+                    <text x="60" y="88" text-anchor="middle" fill="rgba(255,255,255,.62)" font-size="9" font-weight="700" letter-spacing="1.1" font-family="Inter Tight, sans-serif">MODERATE</text>
+                  </svg>
+                </div>
+                <div class="hero-div"></div>
+                <div class="hero-foot">Low ferritin and three short nights are both pulling this down.</div>
+              </div>
+            </div>
+
+            <div class="px">
+              <div class="sect"><h4>Your signals</h4><span class="act">90 days</span></div>
+              <div class="tiles">
+                <div class="tile">
+                  <div class="tile-top">
+                    <div class="tile-ic"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg></div>
+                    <span class="tile-delta" style="color:#F97316">−14%</span>
+                  </div>
+                  <div>
+                    <div class="tile-val">38<small>ms</small></div>
+                    <div class="tile-lbl">HRV</div>
+                  </div>
+                </div>
+                <div class="tile">
+                  <div class="tile-top">
+                    <div class="tile-ic"><svg viewBox="0 0 24 24"><path d="M19 14c1.5-1.6 2-3 2-4.6A4.4 4.4 0 0 0 12 7a4.4 4.4 0 0 0-9 2.4C3 13 7 16.5 12 21c2.6-2.3 5-4.4 7-7z"/></svg></div>
+                    <span class="tile-delta" style="color:#F97316">+6%</span>
+                  </div>
+                  <div>
+                    <div class="tile-val">62<small>bpm</small></div>
+                    <div class="tile-lbl">Resting HR</div>
+                  </div>
+                </div>
+              </div>
+              <div class="chips">
+                <div class="chip"><b>6.4</b><span>SLEEP</span></div>
+                <div class="chip"><b>88</b><span>EFF</span></div>
+                <div class="chip"><b>7.2k</b><span>STEPS</span></div>
+                <div class="chip"><b>412</b><span>KCAL</span></div>
+              </div>
+
+              <div class="sect"><h4>Fuel</h4><span class="act">Log a meal</span></div>
+              <div class="card" style="padding:1.3em 1.5em">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div><b style="font-size:1.9em;font-weight:800;letter-spacing:-.02em">1,480</b><span style="font-size:1.2em;color:var(--faint);font-weight:600"> / 2,050 kcal</span></div>
+                  <span style="font-size:1.2em;color:var(--muted);font-weight:600">570 left</span>
+                </div>
+                <div class="bar" style="margin-top:.9em"><i style="width:72%"></i></div>
+                <div style="display:flex;justify-content:space-between;margin-top:.8em;font-size:1.15em;color:var(--muted);font-weight:600">
+                  <span>P 68 / 85 g</span><span>C 142 g</span><span>F 51 g</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Today</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 11v10M19 3c-1.7 1.4-2.5 3.4-2.5 6s.8 3 2.5 3v9"/></svg><span>Food</span></div>
+            <div class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Insights</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6M7.5 14h9"/></svg><span>Labs</span></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ===== FOOD ===== -->
+      <div class="screen-block">
+        <div class="screen-cap">
+          <h3>Food</h3>
+          <p>Today's intake against targets, then the log. Entry point to the restaurant picker. <code>app/(tabs)/food.tsx</code></p>
+        </div>
+        <div class="phone"><div class="vp">
+          <div class="statusbar"><span>9:41</span><span class="ind"><span class="wifi"></span><span class="bar"></span></span></div>
+          <div class="scroll">
+            <div class="px" style="margin-top:.6em">
+              <div class="greet" style="font-size:3.5em">Food</div>
+            </div>
+
+            <div class="px" style="margin-top:1.2em">
+              <div class="card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <div><b style="font-size:3.2em;font-weight:900;letter-spacing:-.035em">1,480</b><span style="font-size:1.3em;color:var(--faint);font-weight:600"> / 2,050</span></div>
+                  <span class="pill pill-ok">On track</span>
+                </div>
+                <div class="bar" style="margin-top:1em"><i style="width:72%"></i></div>
+                <div style="display:flex;gap:.7em;margin-top:1.3em">
+                  <div style="flex:1"><div style="font-size:1.05em;color:var(--faint);font-weight:700;letter-spacing:.08em">PROTEIN</div><div style="font-size:1.75em;font-weight:800;margin-top:.15em">68<small style="font-size:.6em;color:var(--faint)">/85g</small></div><div class="bar" style="margin-top:.4em;height:.5em"><i style="width:80%"></i></div></div>
+                  <div style="flex:1"><div style="font-size:1.05em;color:var(--faint);font-weight:700;letter-spacing:.08em">CARBS</div><div style="font-size:1.75em;font-weight:800;margin-top:.15em">142<small style="font-size:.6em;color:var(--faint)">/230g</small></div><div class="bar" style="margin-top:.4em;height:.5em"><i style="width:62%"></i></div></div>
+                  <div style="flex:1"><div style="font-size:1.05em;color:var(--faint);font-weight:700;letter-spacing:.08em">FAT</div><div style="font-size:1.75em;font-weight:800;margin-top:.15em">51<small style="font-size:.6em;color:var(--faint)">/68g</small></div><div class="bar" style="margin-top:.4em;height:.5em"><i style="width:75%"></i></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="px">
+              <div class="sect"><h4>Today's meals</h4><span class="act">Log a meal</span></div>
+              <div class="card" style="padding:0">
+                <div class="row">
+                  <div class="row-ic" style="background:#FFF4E0"><svg viewBox="0 0 24 24" style="stroke:#F59E0B"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg></div>
+                  <div class="row-txt"><b>Poha with peanuts</b><span>Breakfast · 08:10</span></div>
+                  <div style="text-align:right"><b style="font-size:1.5em;font-weight:800">320</b><div style="font-size:1.05em;color:var(--faint);font-weight:600">kcal</div></div>
+                </div>
+                <div class="row">
+                  <div class="row-ic" style="background:#E7F7EC"><svg viewBox="0 0 24 24" style="stroke:#16A34A"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 3v9l6 3"/></svg></div>
+                  <div class="row-txt"><b>Rajma, brown rice, salad</b><span>Lunch · 13:25</span></div>
+                  <div style="text-align:right"><b style="font-size:1.5em;font-weight:800">640</b><div style="font-size:1.05em;color:var(--faint);font-weight:600">kcal</div></div>
+                </div>
+                <div class="row">
+                  <div class="row-ic"><svg viewBox="0 0 24 24"><path d="M6 3h12l-1 7a5 5 0 0 1-10 0z"/><path d="M12 10v8M8 21h8"/></svg></div>
+                  <div class="row-txt"><b>Masala chai, 2 dates</b><span>Snack · 16:40</span></div>
+                  <div style="text-align:right"><b style="font-size:1.5em;font-weight:800">190</b><div style="font-size:1.05em;color:var(--faint);font-weight:600">kcal</div></div>
+                </div>
+              </div>
+
+              <div class="sect"><h4>This week</h4></div>
+              <div class="card">
+                <div style="display:flex;align-items:flex-end;gap:.55em;height:9em">
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em"><div style="width:100%;height:64%;background:#D9EEDF;border-radius:.6em"></div><span style="font-size:1em;color:var(--faint);font-weight:700">M</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em"><div style="width:100%;height:81%;background:#D9EEDF;border-radius:.6em"></div><span style="font-size:1em;color:var(--faint);font-weight:700">T</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em"><div style="width:100%;height:52%;background:#D9EEDF;border-radius:.6em"></div><span style="font-size:1em;color:var(--faint);font-weight:700">W</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em"><div style="width:100%;height:93%;background:#D9EEDF;border-radius:.6em"></div><span style="font-size:1em;color:var(--faint);font-weight:700">T</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em"><div style="width:100%;height:72%;background:#BFF049;border-radius:.6em"></div><span style="font-size:1em;color:var(--ink);font-weight:700">F</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em"><div style="width:100%;height:40%;background:#EDF2ED;border-radius:.6em"></div><span style="font-size:1em;color:var(--faint);font-weight:700">S</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em"><div style="width:100%;height:40%;background:#EDF2ED;border-radius:.6em"></div><span style="font-size:1em;color:var(--faint);font-weight:700">S</span></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:1.1em;font-size:1.2em;color:var(--muted);font-weight:600">
+                  <span>Daily average</span><b style="color:var(--ink);font-weight:800">1,910 kcal</b>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Today</span></div>
+            <div class="tab on"><svg viewBox="0 0 24 24"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 11v10M19 3c-1.7 1.4-2.5 3.4-2.5 6s.8 3 2.5 3v9"/></svg><span>Food</span></div>
+            <div class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Insights</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6M7.5 14h9"/></svg><span>Labs</span></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ===== INSIGHTS ===== -->
+      <div class="screen-block">
+        <div class="screen-cap">
+          <h3>Insights</h3>
+          <p>Correlation output, ranked by severity. The product's reason to exist. <code>app/(tabs)/insights.tsx</code></p>
+        </div>
+        <div class="phone"><div class="vp">
+          <div class="statusbar"><span>9:41</span><span class="ind"><span class="wifi"></span><span class="bar"></span></span></div>
+          <div class="scroll">
+            <div class="px" style="margin-top:.6em;display:flex;align-items:flex-start;justify-content:space-between">
+              <div class="greet" style="font-size:3.5em">Insights</div>
+              <div class="iconbtn" style="margin-top:.6em"><svg viewBox="0 0 24 24"><path d="M21 2v6h-6M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 12a9 9 0 0 1 15-6.7L21 8"/></svg></div>
+            </div>
+
+            <div class="px" style="margin-top:1em">
+              <div class="hero" style="background:linear-gradient(150deg,#2E8455,#16412B)">
+                <div class="hero-badge" style="background:rgba(249,115,22,.28)">Act on this</div>
+                <h3 style="font-size:2.6em;line-height:1.12;margin-top:.5em">Low ferritin is tracking your HRV drop</h3>
+                <div class="sub" style="margin-top:.55em;line-height:1.45">
+                  Ferritin at 18 ng/mL sits at the bottom of range. Across the last 21 days your HRV
+                  averaged 38 ms against a 44 ms baseline.
+                </div>
+                <div class="hero-div"></div>
+                <div class="hero-foot" style="display:flex;align-items:center;gap:.6em">
+                  <svg viewBox="0 0 24 24" style="width:1.5em;height:1.5em;stroke:#BFF049;fill:none;stroke-width:2.4;stroke-linecap:round"><path d="M20 6L9 17l-5-5"/></svg>
+                  Confidence: moderate · 3 signals agree
+                </div>
+              </div>
+            </div>
+
+            <div class="px">
+              <div class="sect"><h4>What to do</h4></div>
+              <div class="card" style="padding:0">
+                <div class="row">
+                  <div class="row-ic" style="background:#E8FAC4"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+                  <div class="row-txt"><b>Pair iron with vitamin C</b><span>Lemon on the rajma; skip chai for an hour after</span></div>
+                </div>
+                <div class="row">
+                  <div class="row-ic" style="background:#E8FAC4"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+                  <div class="row-txt"><b>Hold intensity for 5 days</b><span>Zone 2 only until HRV recovers to 42 ms</span></div>
+                </div>
+                <div class="row">
+                  <div class="row-ic" style="background:#E8FAC4"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+                  <div class="row-txt"><b>Re-test ferritin in 8 weeks</b><span>Sooner if fatigue persists</span></div>
+                </div>
+              </div>
+
+              <div class="sect"><h4>Also worth watching</h4></div>
+              <div class="insight">
+                <span class="sev" style="color:#F59E0B;background:#FEF3E2">Keep an eye on</span>
+                <h5>Sleep is 52 min short of your average</h5>
+                <p>Four of the last seven nights ended before 6.5 h. Efficiency held at 88%, so this is duration, not quality.</p>
+              </div>
+              <div class="insight">
+                <span class="sev" style="color:#0EA5E9;background:#E4F5FE">For context</span>
+                <h5>Luteal phase started 3 days ago</h5>
+                <p>A 5–8% HRV dip is expected here and is already priced into the readiness score.</p>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Today</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 11v10M19 3c-1.7 1.4-2.5 3.4-2.5 6s.8 3 2.5 3v9"/></svg><span>Food</span></div>
+            <div class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+            <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Insights</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6M7.5 14h9"/></svg><span>Labs</span></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ===== LABS ===== -->
+      <div class="screen-block">
+        <div class="screen-cap">
+          <h3>Labs</h3>
+          <p>Blood work, flagged against sex-specific reference ranges. <code>app/(tabs)/labs.tsx</code></p>
+        </div>
+        <div class="phone"><div class="vp">
+          <div class="statusbar"><span>9:41</span><span class="ind"><span class="wifi"></span><span class="bar"></span></span></div>
+          <div class="scroll">
+            <div class="px" style="margin-top:.6em;display:flex;align-items:flex-start;justify-content:space-between">
+              <div class="greet" style="font-size:3.5em">Labs</div>
+              <div style="display:flex;gap:.7em;margin-top:.8em">
+                <div class="iconbtn"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H5.2L4 18z"/></svg></div>
+                <div class="iconbtn" style="background:#BFF049"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+              </div>
+            </div>
+
+            <div class="px" style="margin-top:1.2em">
+              <div class="card" style="background:#FEF7EC;border:.1em solid #F8DFB0">
+                <div style="display:flex;align-items:center;gap:1em">
+                  <div class="row-ic" style="background:#FBE7C4;width:4em;height:4em"><svg viewBox="0 0 24 24" style="stroke:#B45309"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6A2 2 0 0 0 22 18L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+                  <div class="row-txt"><b style="color:#92400E">3 need attention</b><span style="color:#B45309">Ferritin, vitamin D, B12</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="px">
+              <div class="sect"><h4>Wellness panel</h4><span class="act">14 Jul</span></div>
+              <div class="card">
+                <div class="bio"><span class="dot" style="background:#F97316"></span><span class="nm">Ferritin</span><span class="vl" style="color:#F97316">18<span class="un">ng/mL</span></span></div>
+                <div class="bio"><span class="dot" style="background:#F97316"></span><span class="nm">Vitamin D</span><span class="vl" style="color:#F97316">21<span class="un">ng/mL</span></span></div>
+                <div class="bio"><span class="dot" style="background:#F59E0B"></span><span class="nm">Vitamin B12</span><span class="vl" style="color:#F59E0B">248<span class="un">pg/mL</span></span></div>
+                <div class="bio"><span class="dot" style="background:#16A34A"></span><span class="nm">Haemoglobin</span><span class="vl">13.1<span class="un">g/dL</span></span></div>
+                <div class="bio"><span class="dot" style="background:#16A34A"></span><span class="nm">HDL</span><span class="vl">58<span class="un">mg/dL</span></span></div>
+                <div class="bio"><span class="dot" style="background:#0EA5E9"></span><span class="nm">TSH</span><span class="vl">2.4<span class="un">mIU/L</span></span></div>
+                <div class="bio"><span class="dot" style="background:#16A34A"></span><span class="nm">Triglycerides</span><span class="vl">96<span class="un">mg/dL</span></span></div>
+              </div>
+
+              <div class="sect"><h4>Reports</h4><span class="act">Add another</span></div>
+              <div class="card" style="padding:0">
+                <div class="row">
+                  <div class="row-ic" style="background:#E7F7EC"><svg viewBox="0 0 24 24" style="stroke:#16A34A"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></div>
+                  <div class="row-txt"><b>Wellness panel</b><span>14 July 2026 · 21 biomarkers</span></div>
+                  <span class="pill pill-ok">Ready</span>
+                </div>
+                <div class="row">
+                  <div class="row-ic"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/></svg></div>
+                  <div class="row-txt"><b>Thyroid profile</b><span>2 March 2026 · 4 biomarkers</span></div>
+                  <span class="pill pill-off">Archived</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Today</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 11v10M19 3c-1.7 1.4-2.5 3.4-2.5 6s.8 3 2.5 3v9"/></svg><span>Food</span></div>
+            <div class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Insights</span></div>
+            <div class="tab on"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6M7.5 14h9"/></svg><span>Labs</span></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ===== SETTINGS ===== -->
+      <div class="screen-block">
+        <div class="screen-cap">
+          <h3>Settings</h3>
+          <p>Connections, correlation toggles, demo data, and destructive actions last. <code>app/(tabs)/settings.tsx</code></p>
+        </div>
+        <div class="phone"><div class="vp">
+          <div class="statusbar"><span>9:41</span><span class="ind"><span class="wifi"></span><span class="bar"></span></span></div>
+          <div class="scroll">
+            <div class="px" style="margin-top:.6em"><div class="greet" style="font-size:3.5em">Settings</div></div>
+
+            <div class="px">
+              <div class="sect"><h4>Your profile</h4></div>
+              <div class="card" style="padding:0">
+                <div class="row">
+                  <div class="row-ic" style="background:#E7F7EC"><svg viewBox="0 0 24 24" style="stroke:#16A34A"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+                  <div class="row-txt"><b>Goal, diet and body</b><span>Feel better day to day · No restrictions</span></div>
+                  <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+              </div>
+
+              <div class="sect"><h4>Apple Health</h4></div>
+              <div class="card" style="padding:0">
+                <div class="row">
+                  <div class="row-ic"><svg viewBox="0 0 24 24"><path d="M19 14c1.5-1.6 2-3 2-4.6A4.4 4.4 0 0 0 12 7a4.4 4.4 0 0 0-9 2.4C3 13 7 16.5 12 21c2.6-2.3 5-4.4 7-7z"/></svg></div>
+                  <div class="row-txt"><b>HealthKit access</b><span>Synced 4m ago</span></div>
+                  <span class="pill pill-ok">Connected</span>
+                </div>
+                <div style="padding:0 1.5em 1.5em">
+                  <div class="btn btn-ghost">Disconnect</div>
+                  <p class="helper">Reading HRV, resting heart rate, sleep, steps and active energy.</p>
+                </div>
+              </div>
+
+              <div class="sect"><h4>Gmail import</h4></div>
+              <div class="card" style="padding:0">
+                <div class="row">
+                  <div class="row-ic"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 6l8 6 8-6"/></svg></div>
+                  <div class="row-txt"><b>Mailbox access</b><span>Not connected</span></div>
+                  <span class="pill pill-off">Off</span>
+                </div>
+                <div style="padding:0 1.5em 1.5em">
+                  <div class="btn">Connect Gmail</div>
+                  <p class="helper">Read-only, used to find lab reports from known diagnostics providers.</p>
+                </div>
+              </div>
+
+              <div class="sect"><h4>Correlations</h4></div>
+              <div class="card" style="padding:.4em 1.5em">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:1.1em 0;border-bottom:.1em solid var(--hairline)"><span style="font-size:1.5em;font-weight:600">Iron and fatigue</span><span class="toggle"></span></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:1.1em 0;border-bottom:.1em solid var(--hairline)"><span style="font-size:1.5em;font-weight:600">Thyroid signal</span><span class="toggle"></span></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:1.1em 0;border-bottom:.1em solid var(--hairline)"><span style="font-size:1.5em;font-weight:600">Chronic short sleep</span><span class="toggle"></span></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:1.1em 0"><span style="font-size:1.5em;font-weight:600">Training load and HRV</span><span class="toggle off"></span></div>
+              </div>
+
+              <div class="sect"><h4>Demo data</h4></div>
+              <div class="card" style="padding:0">
+                <div class="row">
+                  <div class="row-ic"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6"/></svg></div>
+                  <div class="row-txt"><b>Demo persona</b><span>Active · 14 meals logged</span></div>
+                  <span class="pill pill-warn">On</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Today</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 11v10M19 3c-1.7 1.4-2.5 3.4-2.5 6s.8 3 2.5 3v9"/></svg><span>Food</span></div>
+            <div class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Insights</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6M7.5 14h9"/></svg><span>Labs</span></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ===== EMPTY / LOADING ===== -->
+      <div class="screen-block">
+        <div class="screen-cap">
+          <h3>Cold start</h3>
+          <p>No permission, no baseline. Skeletons hold layout; the hero explains rather than apologises.</p>
+        </div>
+        <div class="phone"><div class="vp">
+          <div class="statusbar"><span>9:41</span><span class="ind"><span class="wifi"></span><span class="bar"></span></span></div>
+          <div class="scroll">
+            <div class="px" style="margin-top:.6em">
+              <div class="greet-date">Thursday, 30 July</div>
+              <div class="greet">Good morning</div>
+            </div>
+            <div class="px" style="margin-top:1.5em">
+              <div class="hero">
+                <div class="hero-row">
+                  <div>
+                    <div class="hero-badge">No baseline</div>
+                    <h3>Readiness</h3>
+                    <div class="sub">Building your baseline</div>
+                  </div>
+                  <svg class="gauge" viewBox="0 0 120 96">
+                    <path d="M14 84 A48 48 0 0 1 106 84" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3" stroke-dasharray="1.6 6.4"/>
+                    <rect x="49" y="66" width="22" height="4" rx="2" fill="rgba(255,255,255,.55)"/>
+                    <text x="60" y="90" text-anchor="middle" fill="rgba(255,255,255,.6)" font-size="9" font-weight="700" letter-spacing="1" font-family="Inter Tight, sans-serif">NEEDS 7 DAYS</text>
+                  </svg>
+                </div>
+                <div class="hero-div"></div>
+                <div class="hero-foot">Connect Apple Health to start building your baseline.</div>
+              </div>
+            </div>
+            <div class="px">
+              <div class="sect"><h4>Your signals</h4></div>
+              <div style="display:flex;gap:.9em"><div class="sk" style="flex:1;height:13.5em"></div><div class="sk" style="flex:1;height:13.5em"></div></div>
+              <div class="sk" style="height:7.6em;margin-top:.9em;border-radius:1.5em"></div>
+
+              <div class="sect"><h4>Labs</h4></div>
+              <div class="card">
+                <div class="empty">
+                  <div class="ic"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6M7.5 14h9"/></svg></div>
+                  <h5>No blood work yet</h5>
+                  <p>Add a lab report and we can correlate it against your telemetry.</p>
+                  <div class="btn" style="margin-top:1.4em">Import from Gmail</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Today</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 11v10M19 3c-1.7 1.4-2.5 3.4-2.5 6s.8 3 2.5 3v9"/></svg><span>Food</span></div>
+            <div class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Insights</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6M7.5 14h9"/></svg><span>Labs</span></div>
+          </div>
+        </div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ================= COMPONENTS ================= -->
+<section id="components">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">05</div>
+      <h2>Components</h2>
+      <p>The recurring primitives, isolated. Source lives in <code>src/components/</code>.</p>
+    </div>
+
+    <div class="gal">
+      <div class="gal-item">
+        <span class="lbl">ui/Button — primary</span>
+        <div class="stage"><div class="btn">Connect Apple Health</div></div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">ui/Button — ghost</span>
+        <div class="stage"><div class="btn btn-ghost">Remove demo data</div></div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">ui/Badge — status</span>
+        <div class="stage" style="display:flex;gap:.6em;flex-wrap:wrap">
+          <span class="pill pill-ok">Connected</span>
+          <span class="pill pill-warn">Not connected</span>
+          <span class="pill pill-off">Off</span>
+        </div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">health/StatTile</span>
+        <div class="stage"><div class="tile" style="max-width:16em">
+          <div class="tile-top">
+            <div class="tile-ic"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg></div>
+            <span class="tile-delta" style="color:#F97316">−14%</span>
+          </div>
+          <div><div class="tile-val">38<small>ms</small></div><div class="tile-lbl">HRV</div></div>
+        </div></div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">health/SignalChip</span>
+        <div class="stage"><div class="chips">
+          <div class="chip"><b>6.4</b><span>SLEEP</span></div>
+          <div class="chip"><b>88</b><span>EFF</span></div>
+          <div class="chip"><b>7.2k</b><span>STEPS</span></div>
+        </div></div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">labs/BiomarkerRow</span>
+        <div class="stage">
+          <div class="bio"><span class="dot" style="background:#F97316"></span><span class="nm">Ferritin</span><span class="vl" style="color:#F97316">18<span class="un">ng/mL</span></span></div>
+          <div class="bio"><span class="dot" style="background:#16A34A"></span><span class="nm">Haemoglobin</span><span class="vl">13.1<span class="un">g/dL</span></span></div>
+        </div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">ui/SectionHeader</span>
+        <div class="stage"><div class="sect" style="margin:0"><h4>Your signals</h4><span class="act">90 days</span></div></div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">ui/Skeleton</span>
+        <div class="stage"><div style="display:flex;gap:.9em"><div class="sk" style="flex:1;height:9em"></div><div class="sk" style="flex:1;height:9em"></div></div></div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">ui/EmptyState</span>
+        <div class="stage"><div class="empty" style="padding:1em">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6"/></svg></div>
+          <h5>No blood work yet</h5><p>Add a report to start correlating.</p>
+        </div></div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">insights/InsightCard</span>
+        <div class="stage"><div class="insight" style="margin:0">
+          <span class="sev" style="color:#F59E0B;background:#FEF3E2">Keep an eye on</span>
+          <h5>Sleep is 52 min short</h5>
+          <p>Four of seven nights under 6.5 h.</p>
+        </div></div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">navigation/PillTabBar</span>
+        <div class="stage" style="position:relative;height:9em">
+          <div class="tabbar" style="position:absolute;left:0;right:0;bottom:1em;box-shadow:0 .6em 1.8em rgba(19,40,28,.14)">
+            <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Today</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 11v10M19 3c-1.7 1.4-2.5 3.4-2.5 6s.8 3 2.5 3v9"/></svg><span>Food</span></div>
+            <div class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Insights</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24"><path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3M9 3h6"/></svg><span>Labs</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="gal-item">
+        <span class="lbl">ui/Toggle</span>
+        <div class="stage" style="display:flex;gap:1.4em;align-items:center">
+          <span class="toggle"></span><span class="toggle off"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RULES ================= -->
+<section id="rules" style="border-bottom:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">06</div>
+      <h2>Rules that hold the system together</h2>
+      <p>Constraints worth knowing before extending the design.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Rule</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>One hero per screen</td><td>The deep-green gradient card is the focal point. Two competing heroes flattens hierarchy.</td></tr>
+          <tr><td>Lime = action only</td><td>Never decorative. A lime surface should always be tappable.</td></tr>
+          <tr><td>Brand green ≠ optimal green</td><td>Separate ramps so “our brand” and “healthy value” never read alike.</td></tr>
+          <tr><td>Skeletons hold layout</td><td>Loading states match the final geometry so nothing reflows on arrival.</td></tr>
+          <tr><td>Empty states explain</td><td>“Building your baseline” beats an error. No red for an unconfigured state.</td></tr>
+          <tr><td>Never render 0 / 0</td><td>The fuel strip only appears once targets exist — an empty ratio is worse than no strip.</td></tr>
+          <tr><td>Units are faint, values are ink</td><td>The number is the content; the unit is a label.</td></tr>
+          <tr><td>Destructive actions last</td><td>Erase-data sits at the bottom of Settings, behind a confirm.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <b>Fidelity caveat</b>
+      <p>
+        Screens are hand-built HTML approximations for design discussion — they are not generated
+        from the React Native tree, so spacing may drift by a pixel or two. Tokens in sections
+        01–03 are copied verbatim from <code>tailwind.config.js</code> and
+        <code>src/theme/colors.ts</code> and are exact. Sample content shows the demo persona,
+        not real user data.
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Vitals Health · design reference · generated from source at <code>com.vitals.health</code> v1.0.0
+  </div>
+</footer>
+
+</body>
+</html>

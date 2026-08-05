@@ -5,8 +5,14 @@ const HEALTH_SHARE_REASON =
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Vitals',
+  // Becomes CFBundleDisplayName. Must not collide with an app already on the
+  // App Store — plain 'Vitals' is taken and fails validation (90129). Kept in
+  // step with the App Store Connect record name.
+  name: 'Vitals Health',
   slug: 'vitals-health-correlation',
+  // Required with a dynamic config: this account has access to more than one
+  // EAS owner, and the CLI will not guess which one owns the project.
+  owner: 'mhdnazeemc',
   scheme: 'vitals',
   version: '1.0.0',
   orientation: 'portrait',
@@ -43,7 +49,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSLocationWhenInUseUsageDescription:
         'We use your location only while the app is open, to find restaurants near you that fit your health profile. It is never stored or sent anywhere.',
       ITSAppUsesNonExemptEncryption: false,
-      UIBackgroundModes: ['fetch', 'processing'],
+      // No UIBackgroundModes: nothing here registers a BGTaskScheduler task or
+      // a background-fetch handler, and declaring 'processing' without
+      // BGTaskSchedulerPermittedIdentifiers fails App Store validation (90771).
+      // HealthKit wakes us through the background-delivery entitlement and the
+      // observers in healthkit.provider.ts, which need no background mode.
     },
   },
   android: {
@@ -104,8 +114,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     googleClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',
     // Restricted in the Cloud console to this bundle ID + the Places API.
     placesApiKey: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ?? '',
+    // Written by `eas init`. Must stay a literal: an env-var indirection here
+    // silently resolves to a bogus id when the var is unset, which reads to the
+    // CLI as an already-linked project and blocks re-linking.
     eas: {
-      projectId: process.env.EAS_PROJECT_ID ?? '00000000-0000-0000-0000-000000000000',
+      projectId: '59cffd1a-1913-4743-9527-eefbdee27859',
     },
   },
 });

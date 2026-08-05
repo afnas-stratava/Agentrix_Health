@@ -1,3 +1,5 @@
+import * as Application from 'expo-application';
+
 import type { Cuisine } from '@/schemas/profile';
 import type { Restaurant } from '@/schemas/dining';
 import { RestaurantSchema } from '@/schemas/dining';
@@ -149,6 +151,13 @@ export async function searchNearbyRestaurants({
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': env.placesApiKey,
         'X-Goog-FieldMask': FIELD_MASK,
+        // An "iOS apps" key restriction is enforced against this header, which
+        // Google's native SDKs send for you but a raw fetch does not. Without
+        // it a correctly-restricted key rejects our own requests with
+        // API_KEY_IOS_APP_BLOCKED and iosBundleId=<empty>.
+        ...(Application.applicationId
+          ? { 'X-Ios-Bundle-Identifier': Application.applicationId }
+          : {}),
       },
       body: JSON.stringify({
         includedTypes: ['restaurant'],
