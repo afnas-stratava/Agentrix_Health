@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,7 +13,10 @@ import '../../../core/widgets/screen_back_button.dart';
 import '../../../core/widgets/surface_card.dart';
 import 'main_shell.dart';
 
-String get _healthStoreName => Platform.isAndroid ? 'Health Connect' : 'Apple Health';
+String get _healthStoreName {
+  if (kIsWeb) return 'sample health data';
+  return Platform.isAndroid ? 'Health Connect' : 'Apple Health';
+}
 
 /// About, and the honest version of "what happens to my data".
 ///
@@ -190,6 +194,7 @@ class AboutScreen extends StatelessWidget {
   }
 
   static String get _platformName {
+    if (kIsWeb) return 'Web';
     if (Platform.isIOS) return 'iOS';
     if (Platform.isAndroid) return 'Android';
     return Platform.operatingSystem;

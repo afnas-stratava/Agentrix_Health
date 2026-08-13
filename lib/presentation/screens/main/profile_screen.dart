@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1084,6 +1085,7 @@ class _AboutSection extends StatelessWidget {
   }
 
   static String get _platformName {
+    if (kIsWeb) return 'Web';
     if (Platform.isIOS) return 'iOS';
     if (Platform.isAndroid) return 'Android';
     return Platform.operatingSystem;
