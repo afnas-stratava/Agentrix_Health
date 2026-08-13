@@ -9,6 +9,7 @@ import '../../../core/config/app_info.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/util/units.dart';
 import '../../../core/widgets/surface_card.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_tag.dart';
@@ -424,7 +425,7 @@ class _ProfileSection extends ConsumerWidget {
                                 profile.goals.map((g) => g.label).join(', '),
                                 profile.effectiveDietPattern.label,
                                 if (profile.weightKg != null)
-                                  '${profile.weightKg!.round()} kg',
+                                  '${kgToLb(profile.weightKg!).round()} lb',
                               ].join(' · '),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

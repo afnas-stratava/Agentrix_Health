@@ -29,7 +29,7 @@ void main() {
   testWidgets('every tab label is laid out, selected or not', (tester) async {
     await pumpShell(tester);
 
-    for (final label in const ['TODAY', 'FOOD', 'INSIGHTS', 'LABS']) {
+    for (final label in const ['TODAY', 'FOOD', 'INSIGHTS', 'RECORDS']) {
       expect(find.text(label), findsOneWidget, reason: '$label must be present');
     }
   });

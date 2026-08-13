@@ -1,4 +1,21 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// Whether onboarding was already finished on this device, resolved in
+/// `main()` *before* `runApp()` and overridden via `ProviderScope(overrides:
+/// [...])`. [AppStageNotifier.build] reads it synchronously, so the first
+/// frame is already correct — Riverpod's
+/// `build()` cannot itself await the SharedPreferences read that would
+/// otherwise be needed, and the natural fallback (start at `welcome`, flip to
+/// `main` a moment later) draws one real frame of onboarding before flipping,
+/// which is the flash a user actually sees as "onboarding showing again".
+final onboardingCompleteAtLaunchProvider = Provider<bool>((ref) => false);
+
+/// Shared with `main.dart`, which reads this key directly before `runApp()`
+/// — a single source of truth so the write side (`AppStageNotifier`) and the
+/// pre-launch read can never drift onto different key strings.
+const String onboardingCompleteKey = 'onboarding_complete.v1';
 
 /// Top-level app flow. Mirrors `app/onboarding/_layout.tsx` plus the tab shell.
 ///
@@ -43,14 +60,20 @@ enum AppStage {
 }
 
 class AppStageNotifier extends Notifier<AppStage> {
-  /// Starts at [AppStage.welcome].
+  /// Starts at [AppStage.main] when either `SKIP_ONBOARDING` is set or
+  /// onboarding was already finished on this device in a previous launch —
+  /// both known synchronously by the time this runs, so there is no flash of
+  /// `welcome` to correct a moment later.
   ///
   /// To jump straight to the main app while working on a tab, run with
   /// `--dart-define=SKIP_ONBOARDING=true` rather than editing this default —
   /// hardcoding `main` here silently ships an app with no onboarding, and takes
   /// the onboarding widget tests down with it.
   @override
-  AppStage build() => _skipOnboarding ? AppStage.main : AppStage.welcome;
+  AppStage build() {
+    final done = _skipOnboarding || ref.read(onboardingCompleteAtLaunchProvider);
+    return done ? AppStage.main : AppStage.welcome;
+  }
 
   static const bool _skipOnboarding = bool.fromEnvironment('SKIP_ONBOARDING');
 
@@ -58,8 +81,30 @@ class AppStageNotifier extends Notifier<AppStage> {
   void next() => state = state.next;
   void back() => state = state.previous;
 
-  void goWelcome() => state = AppStage.welcome;
-  void goMain() => state = AppStage.main;
+  /// Also clears the "onboarding finished" flag: every caller of this —
+  /// sign out, delete account, demo reset — is a deliberate reset, and the
+  /// next launch should be able to show onboarding again rather than
+  /// skipping past it on a profile that no longer exists.
+  Future<void> goWelcome() async {
+    state = AppStage.welcome;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(onboardingCompleteKey);
+    } catch (error) {
+      debugPrint('AppStageNotifier: could not clear onboarding flag: $error');
+    }
+  }
+
+  /// Marks onboarding finished, so the next launch skips straight past it.
+  Future<void> goMain() async {
+    state = AppStage.main;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(onboardingCompleteKey, true);
+    } catch (error) {
+      debugPrint('AppStageNotifier: could not save onboarding flag: $error');
+    }
+  }
 }
 
 final appStageProvider = NotifierProvider<AppStageNotifier, AppStage>(

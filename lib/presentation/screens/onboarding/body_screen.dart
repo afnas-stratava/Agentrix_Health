@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/util/units.dart';
 import '../../../core/widgets/choice.dart' as choice;
 import '../../../domain/entities/profile/diet_pattern.dart';
+import '../../../domain/entities/user_profile.dart';
 import '../../providers/app_stage_provider.dart';
 import '../../providers/user_profile_provider.dart';
 import 'onboarding_scaffold.dart';
@@ -37,8 +39,28 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
     _activity = profile.activityLevel;
   }
 
+  /// The profile at [initState] time is whatever [UserProfileNotifier] had
+  /// synchronously — which is always the blank default, because the real
+  /// value comes from Firestore via `hydrate()` a moment later. Without this,
+  /// a returning user who already saved these numbers sees blank fields every
+  /// time until they happen to still be in memory from earlier in the session.
+  void _adoptFetchedProfile(UserProfile profile) {
+    if (_heightCm != null || _weightKg != null || _age != null) return;
+    setState(() {
+      _heightCm = profile.heightCm;
+      _weightKg = profile.weightKg;
+      _age = profile.ageYears?.toDouble();
+      _activity = profile.activityLevel;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<UserProfile>(
+      userProfileProvider,
+      (previous, next) => _adoptFetchedProfile(next),
+    );
+
     final canContinue = _heightCm != null && _weightKg != null && _age != null;
     final activity = _activity ?? ActivityLevel.moderate;
 
@@ -63,22 +85,22 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
       children: [
         choice.Stepper(
           label: 'Height',
-          unit: 'cm',
-          value: _heightCm,
-          min: 120,
-          max: 220,
-          fallback: 170,
-          onChanged: (value) => setState(() => _heightCm = value),
+          unit: '',
+          value: _heightCm == null ? null : cmToInches(_heightCm!).roundToDouble(),
+          min: 47, // 3'11"
+          max: 87, // 7'3"
+          fallback: 67, // 5'7"
+          formatValue: formatFeetInches,
+          onChanged: (value) => setState(() => _heightCm = inchesToCm(value)),
         ),
         choice.Stepper(
           label: 'Weight',
-          unit: 'kg',
-          value: _weightKg,
-          min: 35,
-          max: 200,
-          step: 0.5,
-          fallback: 70,
-          onChanged: (value) => setState(() => _weightKg = value),
+          unit: 'lb',
+          value: _weightKg == null ? null : kgToLb(_weightKg!).roundToDouble(),
+          min: 75,
+          max: 440,
+          fallback: 154,
+          onChanged: (value) => setState(() => _weightKg = lbToKg(value)),
         ),
         choice.Stepper(
           label: 'Age',

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/util/units.dart';
 import '../../../core/widgets/choice.dart' as choice;
 import '../../../domain/entities/health_goal.dart';
 import '../../../domain/entities/profile/diet_pattern.dart';
+import '../../../domain/entities/user_profile.dart';
 import '../../providers/app_stage_provider.dart';
 import '../../providers/user_profile_provider.dart';
 import 'onboarding_scaffold.dart';
@@ -25,16 +27,24 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
   Set<HealthGoal>? _goals;
   double? _targetWeight;
 
-  @override
-  void initState() {
-    super.initState();
-    final profile = ref.read(userProfileProvider);
-    _goals = Set<HealthGoal>.from(profile.goals);
-    _targetWeight = profile.targetWeightKg;
+  /// [initState] would only ever see the blank default profile — the real one
+  /// arrives moments later from Firestore via `UserProfileNotifier.hydrate()`
+  /// — so neither field is seeded there. [_goals] already falls back to the
+  /// live `profile.goals` reactively below as long as it stays null, and this
+  /// does the same for [_targetWeight] once the fetch lands, as long as the
+  /// user has not already started answering.
+  void _adoptFetchedProfile(UserProfile profile) {
+    if (_goals != null || _targetWeight != null) return;
+    setState(() => _targetWeight = profile.targetWeightKg);
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<UserProfile>(
+      userProfileProvider,
+      (previous, next) => _adoptFetchedProfile(next),
+    );
+
     final profile = ref.watch(userProfileProvider);
     final goals = _goals ?? profile.goals;
     final wantsTarget =
@@ -90,13 +100,14 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
           const OnboardingLabel('Target weight'),
           choice.Stepper(
             label: 'Goal weight',
-            unit: 'kg',
-            value: _targetWeight,
-            min: 35,
-            max: 200,
-            step: 0.5,
-            fallback: fallbackTarget,
-            onChanged: (value) => setState(() => _targetWeight = value),
+            unit: 'lb',
+            value: _targetWeight == null
+                ? null
+                : kgToLb(_targetWeight!).roundToDouble(),
+            min: 75,
+            max: 440,
+            fallback: kgToLb(fallbackTarget).roundToDouble(),
+            onChanged: (value) => setState(() => _targetWeight = lbToKg(value)),
           ),
         ],
 

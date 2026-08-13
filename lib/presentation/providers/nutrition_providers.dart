@@ -1,6 +1,6 @@
+import 'package:agentrix_health/core/config/secrets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/config/secrets.dart';
 import '../../core/util/iso_day.dart';
 import '../../data/nutrition/gemini_meal_vision.dart';
 import '../../data/repositories/prefs_meal_log_repository.dart';

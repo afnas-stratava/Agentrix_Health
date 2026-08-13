@@ -3,9 +3,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'firebase_options.dart';
+import 'presentation/providers/app_stage_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,5 +38,26 @@ void main() async {
     debugPrint('Firebase setup failed, continuing without cloud sync: $error');
   }
 
-  runApp(const ProviderScope(child: AgentrixHealthApp()));
+  // Resolved here rather than inside AppStageNotifier.build(), which cannot
+  // await it: doing it before the first frame means that frame is already
+  // correct, instead of drawing onboarding for one frame and then correcting
+  // it — the flash a user sees as "onboarding showing again" on every launch.
+  var onboardingComplete = false;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    onboardingComplete = prefs.getBool(onboardingCompleteKey) ?? false;
+  } catch (error) {
+    debugPrint('Could not read onboarding flag, defaulting to false: $error');
+  }
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        onboardingCompleteAtLaunchProvider.overrideWithValue(
+          onboardingComplete,
+        ),
+      ],
+      child: const AgentrixHealthApp(),
+    ),
+  );
 }

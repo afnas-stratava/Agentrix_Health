@@ -6,17 +6,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:agentrix_health/core/config/secrets.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../data/labs/gmail_lab_source.dart';
 import '../../../domain/entities/labs/lab_report.dart';
+import '../../../domain/entities/prescriptions/prescription.dart';
 import '../../providers/labs_providers.dart';
+import '../../providers/prescriptions_providers.dart';
 import 'gmail_import_screen.dart';
 import 'main_shell.dart';
 
-/// Add your blood work. Mirrors `app/upload.tsx`.
+/// Which document type this screen is collecting. Gmail import only exists
+/// for lab reports — it searches specifically for attachments from known
+/// diagnostics labs, which has no prescription equivalent — so a prescription
+/// upload skips straight to the manual pickers.
+enum UploadKind { labReport, prescription }
+
+/// Add your blood work, or a prescription. Mirrors `app/upload.tsx`.
 ///
 /// Gmail is the loud primary path and the manual pickers are deliberately
 /// quieter, because most lab reports arrive by email and stay there — hunting
@@ -35,8 +45,26 @@ enum _ManualMethod {
   final String title;
 }
 
+/// Picker output before it becomes a [LabUpload] or [PrescriptionUpload] —
+/// which one depends on [UploadScreen.kind], decided in `_handleManual`.
+class _PickedFile {
+  const _PickedFile({
+    required this.path,
+    required this.name,
+    required this.sizeBytes,
+    required this.isPdf,
+  });
+
+  final String path;
+  final String name;
+  final int? sizeBytes;
+  final bool isPdf;
+}
+
 class UploadScreen extends ConsumerStatefulWidget {
-  const UploadScreen({super.key});
+  const UploadScreen({super.key, this.kind = UploadKind.labReport});
+
+  final UploadKind kind;
 
   @override
   ConsumerState<UploadScreen> createState() => _UploadScreenState();
@@ -55,24 +83,57 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     final navigator = Navigator.of(context);
 
     try {
-      final upload = switch (method) {
+      final picked = switch (method) {
         _ManualMethod.pdf => await _pickDocument(),
-        _ManualMethod.library => await _pickImage(ImageSource.gallery),
-        _ManualMethod.camera => await _pickImage(ImageSource.camera),
+        _ManualMethod.library => await _pickPhoto(ImageSource.gallery),
+        _ManualMethod.camera => await _pickPhoto(ImageSource.camera),
       };
 
       // Cancelled.
-      if (upload == null) return;
+      if (picked == null) return;
 
       // Dismiss immediately: parsing is slow and the pending row is already
-      // visible on the Labs tab.
+      // visible on the tab.
       navigator.pop();
-      unawaited(ref.read(labsProvider.notifier).upload(upload));
+      final label = switch (widget.kind) {
+        UploadKind.labReport => 'report',
+        UploadKind.prescription => 'prescription',
+      };
+      switch (widget.kind) {
+        case UploadKind.labReport:
+          unawaited(
+            ref
+                .read(labsProvider.notifier)
+                .upload(
+                  LabUpload(
+                    path: picked.path,
+                    name: picked.name,
+                    source: picked.isPdf ? LabSource.pdf : LabSource.image,
+                    sizeBytes: picked.sizeBytes,
+                  ),
+                ),
+          );
+        case UploadKind.prescription:
+          unawaited(
+            ref
+                .read(prescriptionsProvider.notifier)
+                .upload(
+                  PrescriptionUpload(
+                    path: picked.path,
+                    name: picked.name,
+                    source: picked.isPdf
+                        ? PrescriptionSource.pdf
+                        : PrescriptionSource.image,
+                    sizeBytes: picked.sizeBytes,
+                  ),
+                ),
+          );
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Your report is being processed. You will see it on the Labs tab shortly.',
+              'Your $label is being processed. You will see it on the tab shortly.',
             ),
           ),
         );
@@ -88,7 +149,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     }
   }
 
-  Future<LabUpload?> _pickDocument() async {
+  Future<_PickedFile?> _pickDocument() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['pdf'],
@@ -97,15 +158,15 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     final path = file?.path;
     if (file == null || path == null) return null;
 
-    return LabUpload(
+    return _PickedFile(
       path: path,
       name: file.name,
-      source: LabSource.pdf,
       sizeBytes: file.size,
+      isPdf: true,
     );
   }
 
-  Future<LabUpload?> _pickImage(ImageSource source) async {
+  Future<_PickedFile?> _pickPhoto(ImageSource source) async {
     final picked = await ImagePicker().pickImage(
       source: source,
       maxWidth: 2400,
@@ -113,13 +174,15 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     );
     if (picked == null) return null;
 
-    return LabUpload(
+    return _PickedFile(
       path: picked.path,
       name: picked.name,
-      source: LabSource.image,
       sizeBytes: await picked.length(),
+      isPdf: false,
     );
   }
+
+  bool get _isLab => widget.kind == UploadKind.labReport;
 
   @override
   Widget build(BuildContext context) {
@@ -141,13 +204,16 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Add your blood work',
+                      _isLab ? 'Add your blood work' : 'Add a prescription',
                       style: AppTextStyles.h3.copyWith(fontSize: 26),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Most lab reports arrive by email and stay there. We can '
-                      'find them for you.',
+                      _isLab
+                          ? 'Most lab reports arrive by email and stay there. '
+                                'We can find them for you.'
+                          : 'Photograph a prescription or pharmacy label and '
+                                'we will read the medicines onto your list.',
                       style: AppTextStyles.cardBody.copyWith(height: 1.5),
                     ),
                   ],
@@ -163,23 +229,26 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
           ],
         ),
 
-        const SizedBox(height: AppSpacing.space6),
-        const _GmailCard(),
+        if (_isLab) ...[
+          const SizedBox(height: AppSpacing.space6),
+          const _GmailCard(),
 
-        const SizedBox(height: AppSpacing.space3),
-        const _AccessDisclosure(),
+          const SizedBox(height: AppSpacing.space3),
+          const _AccessDisclosure(),
 
-        const SizedBox(height: AppSpacing.space6 + AppSpacing.space1),
-        Text(
-          'OR ADD ONE MANUALLY',
-          style: AppTextStyles.tag.copyWith(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.55,
-            color: AppColors.faint,
+          const SizedBox(height: AppSpacing.space6 + AppSpacing.space1),
+          Text(
+            'OR ADD ONE MANUALLY',
+            style: AppTextStyles.tag.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.55,
+              color: AppColors.faint,
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.space2),
+          const SizedBox(height: AppSpacing.space2),
+        ] else
+          const SizedBox(height: AppSpacing.space6),
 
         Container(
           decoration: BoxDecoration(
@@ -223,13 +292,14 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
           ),
         ],
 
-        const SizedBox(height: AppSpacing.space5),
-        Text(
-          'No backend configured — Gmail import and parsing run against '
-          'on-device fixtures.',
-          textAlign: TextAlign.center,
-          style: AppTextStyles.cardMeta.copyWith(fontSize: 11, height: 1.4),
-        ),
+        if (geminiApiKey.trim().isEmpty) ...[
+          const SizedBox(height: AppSpacing.space5),
+          const Text(
+            'No AI key configured — parsing runs against on-device fixtures.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, height: 1.4, color: AppColors.faint),
+          ),
+        ],
       ],
     );
   }

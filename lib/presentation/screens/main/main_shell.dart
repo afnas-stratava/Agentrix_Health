@@ -146,7 +146,7 @@ class _PillTabBar extends ConsumerWidget {
     (tab: MainTab.today, icon: Icons.home_outlined, label: 'Today'),
     (tab: MainTab.food, icon: Icons.restaurant_outlined, label: 'Food'),
     (tab: MainTab.insights, icon: Icons.insights_outlined, label: 'Insights'),
-    (tab: MainTab.labs, icon: Icons.science_outlined, label: 'Labs'),
+    (tab: MainTab.labs, icon: Icons.science_outlined, label: 'Records'),
   ];
 
   @override

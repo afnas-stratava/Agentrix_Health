@@ -3,83 +3,108 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../domain/entities/dining/restaurant.dart';
-import '../../features/dining/fixtures.dart';
-import '../../features/dining/places.dart';
+import '../../features/dining/overpass_client.dart';
 import '../../features/dining/rank.dart';
 import 'nutrition_providers.dart';
 import 'user_profile_provider.dart';
 
-final placesClientProvider = Provider<PlacesClient>(
-  (ref) => const PlacesClient(apiKey: PlacesClient.apiKeyFromEnvironment),
+final overpassClientProvider = Provider<OverpassClient>(
+  (ref) => const OverpassClient(),
 );
 
-/// Where the nearby list came from, so the UI can disclose a fallback.
-enum NearbyOrigin {
-  /// Live Places results, ranked against a real location.
-  live,
-
-  /// Curated archetypes — no key, no permission, no network, or no results.
-  fixture,
+/// Why a nearby search did not produce a usable list — surfaced to the user
+/// verbatim rather than papered over with invented restaurants. Each one maps
+/// to a distinct message and, where there is one, a one-tap fix in the UI.
+enum NearbyFailureReason {
+  locationServicesOff,
+  permissionDenied,
+  permissionDeniedForever,
+  searchFailed,
+  noResults,
 }
 
 class NearbyResult {
-  const NearbyResult({required this.restaurants, required this.origin});
+  const NearbyResult.success(this.restaurants) : failure = null;
+
+  const NearbyResult.failure(NearbyFailureReason reason)
+    : restaurants = const [],
+      failure = reason;
 
   final List<Restaurant> restaurants;
-  final NearbyOrigin origin;
+  final NearbyFailureReason? failure;
 
-  bool get isFallback => origin == NearbyOrigin.fixture;
+  bool get isSuccess => failure == null;
 }
 
-/// Nearby restaurants.
+class _LocationAttempt {
+  const _LocationAttempt.ok(this.position) : failure = null;
+  const _LocationAttempt.failed(NearbyFailureReason reason)
+    : position = null,
+      failure = reason;
+
+  final Position? position;
+  final NearbyFailureReason? failure;
+}
+
+/// Nearby restaurants, from OpenStreetMap's Overpass API.
 ///
-/// Degrades in one direction only, and never to an error: no key → fixtures;
-/// permission refused → fixtures; request failed or timed out → fixtures; zero
-/// results → fixtures. The UI states which it is showing.
+/// Never invents a result: a disabled location service, a refused permission
+/// and a failed search each report distinctly, and the UI is expected to
+/// explain whichever one happened rather than silently substituting something
+/// else. See `NearbyFailureReason`.
 final nearbyRestaurantsProvider = FutureProvider<NearbyResult>((ref) async {
-  const fallback = NearbyResult(
-    restaurants: fixtureRestaurants,
-    origin: NearbyOrigin.fixture,
-  );
+  final location = await _currentPosition();
+  if (location.failure != null) {
+    return NearbyResult.failure(location.failure!);
+  }
 
-  final client = ref.watch(placesClientProvider);
-  if (!client.isConfigured) return fallback;
+  final position = location.position!;
+  final restaurants = await ref
+      .watch(overpassClientProvider)
+      .searchNearby(latitude: position.latitude, longitude: position.longitude);
 
-  final position = await _currentPosition();
-  if (position == null) return fallback;
-
-  final live = await client.searchNearby(
-    latitude: position.latitude,
-    longitude: position.longitude,
-  );
-
-  if (live == null || live.isEmpty) return fallback;
-  return NearbyResult(restaurants: live, origin: NearbyOrigin.live);
+  if (restaurants == null) {
+    return const NearbyResult.failure(NearbyFailureReason.searchFailed);
+  }
+  if (restaurants.isEmpty) {
+    return const NearbyResult.failure(NearbyFailureReason.noResults);
+  }
+  return NearbyResult.success(restaurants);
 });
 
-Future<Position?> _currentPosition() async {
+Future<_LocationAttempt> _currentPosition() async {
   try {
-    if (!await Geolocator.isLocationServiceEnabled()) return null;
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      return const _LocationAttempt.failed(
+        NearbyFailureReason.locationServicesOff,
+      );
+    }
 
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      return null;
+    if (permission == LocationPermission.deniedForever) {
+      return const _LocationAttempt.failed(
+        NearbyFailureReason.permissionDeniedForever,
+      );
+    }
+    if (permission == LocationPermission.denied) {
+      return const _LocationAttempt.failed(
+        NearbyFailureReason.permissionDenied,
+      );
     }
 
-    return await Geolocator.getCurrentPosition(
+    final position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.medium,
         timeLimit: Duration(seconds: 8),
       ),
     );
+    return _LocationAttempt.ok(position);
   } catch (error) {
-    // A location fix is a nice-to-have here, never a blocker.
     debugPrint('Location unavailable: $error');
-    return null;
+    return const _LocationAttempt.failed(NearbyFailureReason.searchFailed);
   }
 }
 
@@ -102,7 +127,7 @@ class DiningModeNotifier extends Notifier<DiningMode> {
 /// and the food log read, so a recommendation can never contradict the plan.
 final diningPicksProvider = Provider<List<RestaurantPick>>((ref) {
   final nearby = ref.watch(nearbyRestaurantsProvider).valueOrNull;
-  if (nearby == null) return const [];
+  if (nearby == null || !nearby.isSuccess) return const [];
 
   return rankRestaurants(
     restaurants: nearby.restaurants,

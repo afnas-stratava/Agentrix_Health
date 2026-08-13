@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -16,7 +20,6 @@ import '../../../core/widgets/skeleton.dart';
 import '../../../domain/entities/dining/restaurant.dart';
 import '../../../domain/entities/nutrition/food_definition.dart';
 import '../../../domain/entities/nutrition/meal_entry.dart';
-import '../../../features/dining/fixtures.dart';
 import '../../../features/nutrition/food_database.dart';
 import '../../providers/dining_providers.dart';
 import '../../providers/main_tab_provider.dart';
@@ -49,7 +52,12 @@ class DiningScreen extends ConsumerWidget {
         ? null
         : targets.macros.proteinG - consumed.proteinG;
 
-    final isFixture = nearbyAsync.valueOrNull?.isFallback ?? false;
+    // Null only while still loading; once resolved, a non-null value here
+    // means the search failed in some specific, nameable way — see
+    // `NearbyFailureReason`. Never papered over with invented restaurants.
+    final failureReason =
+        nearbyAsync.valueOrNull?.failure ??
+        (nearbyAsync.hasError ? NearbyFailureReason.searchFailed : null);
 
     return ListView(
       padding: EdgeInsets.only(
@@ -90,16 +98,6 @@ class DiningScreen extends ConsumerWidget {
           ),
         ),
 
-        // FALLBACK DISCLOSURE
-        if (isFixture)
-          _Section(
-            delay: 60,
-            child: const _Notice(
-              icon: Icons.info_outline,
-              text: fixtureDisclosure,
-            ),
-          ),
-
         // PICKS
         Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -119,6 +117,11 @@ class DiningScreen extends ConsumerWidget {
                 const Column(
                   spacing: AppSpacing.space3,
                   children: [Skeleton(height: 180), Skeleton(height: 180)],
+                )
+              else if (failureReason != null)
+                _SearchIssueCard(
+                  reason: failureReason,
+                  onRetry: () => ref.invalidate(nearbyRestaurantsProvider),
                 )
               else if (picks.isEmpty)
                 EmptyState(
@@ -319,40 +322,62 @@ class _ModeToggle extends StatelessWidget {
   }
 }
 
-class _Notice extends StatelessWidget {
-  const _Notice({required this.icon, required this.text});
+/// What went wrong and, where there is one, a single button that fixes it.
+/// Shown instead of the picks list whenever the search could not run — never
+/// alongside invented restaurants.
+class _SearchIssueCard extends StatelessWidget {
+  const _SearchIssueCard({required this.reason, required this.onRetry});
 
-  final IconData icon;
-  final String text;
+  final NearbyFailureReason reason;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space4,
-        vertical: AppSpacing.space3,
+    final (icon, title, body, actionLabel, action) = switch (reason) {
+      NearbyFailureReason.locationServicesOff => (
+        Icons.location_off_outlined,
+        'Location is turned off',
+        'Turn on location services to find restaurants near you.',
+        'Open location settings',
+        () => unawaited(Geolocator.openLocationSettings()),
       ),
-      decoration: BoxDecoration(
-        color: AppColors.ink.withValues(alpha: 0.04),
-        border: Border.all(color: AppColors.hairline),
-        borderRadius: BorderRadius.circular(AppRadius.md),
+      NearbyFailureReason.permissionDenied => (
+        Icons.location_disabled_outlined,
+        'Location access needed',
+        'Allow location access so we can find restaurants near you.',
+        'Allow access',
+        onRetry,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacing.space2 + 2,
-        children: [
-          Icon(icon, size: 15, color: AppColors.faint),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.cardMeta.copyWith(
-                fontSize: 11,
-                height: 1.45,
-              ),
-            ),
-          ),
-        ],
+      NearbyFailureReason.permissionDeniedForever => (
+        Icons.settings_outlined,
+        'Location access is off for this app',
+        'Turn it back on in this app’s system settings to search nearby.',
+        'Open app settings',
+        () => unawaited(Geolocator.openAppSettings()),
       ),
+      NearbyFailureReason.searchFailed => (
+        Icons.wifi_off_outlined,
+        'Could not reach the search',
+        'Check your connection and try again.',
+        'Try again',
+        onRetry,
+      ),
+      NearbyFailureReason.noResults => (
+        Icons.explore_off_outlined,
+        'Nothing nearby',
+        'No restaurants turned up within about 1.5 miles. Try again later, or '
+            'from somewhere more central.',
+        'Try again',
+        onRetry,
+      ),
+    };
+
+    return EmptyState(
+      icon: icon,
+      title: title,
+      body: body,
+      actionLabel: actionLabel,
+      onAction: action,
     );
   }
 }
@@ -385,12 +410,21 @@ class _RestaurantPickCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    restaurant.name,
-                    style: AppTextStyles.h5.copyWith(
-                      fontSize: 16,
-                      height: 1.25,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          restaurant.name,
+                          style: AppTextStyles.h5.copyWith(
+                            fontSize: 16,
+                            height: 1.25,
+                          ),
+                        ),
+                      ),
+                      if (restaurant.directionsUri != null)
+                        _DirectionsButton(restaurant: restaurant),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   _VenueMeta(restaurant: restaurant),
@@ -527,14 +561,10 @@ class _VenueMeta extends StatelessWidget {
           restaurant.priceLabel,
           style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
         ),
-      // Never let a curated archetype read as a real nearby venue.
-      if (restaurant.source == RestaurantSource.fixture)
+      if (restaurant.address != null)
         Text(
-          'example venue',
-          style: AppTextStyles.cardMeta.copyWith(
-            fontSize: 11,
-            color: AppColors.borderline,
-          ),
+          restaurant.address!,
+          style: AppTextStyles.cardMeta.copyWith(fontSize: 11),
         ),
     ];
 
@@ -557,6 +587,48 @@ class _VenueMeta extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+/// Opens the venue in whichever maps app is installed. Needs no API key —
+/// it is a plain search URL, not a Places lookup.
+class _DirectionsButton extends StatelessWidget {
+  const _DirectionsButton({required this.restaurant});
+
+  final Restaurant restaurant;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Directions to ${restaurant.name}',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        onTap: () => _open(context),
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          child: const Icon(
+            Icons.directions_outlined,
+            size: 18,
+            color: AppColors.brand,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final uri = restaurant.directionsUri;
+    if (uri == null) return;
+    HapticFeedback.selectionClick();
+    final opened = await launchUrl(
+      Uri.parse(uri),
+      mode: LaunchMode.externalApplication,
+    );
+    if (opened || !context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Could not open maps')));
   }
 }
 

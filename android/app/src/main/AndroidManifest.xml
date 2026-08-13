@@ -1,6 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Only declared for debug builds by default (see
+         android/app/src/debug/AndroidManifest.xml). This app makes its own
+         network calls directly from the device (Gemini, Overpass, Firestore),
+         so a release build needs it declared here too — Firebase's own
+         manifest happens to merge one in today, which is not something to
+         depend on. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Steps require Activity Recognition access on Android. -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <!-- Nearby-restaurant search (Eat out). The geolocator plugin does not
+         inject these itself — omitting them makes every location request
+         throw immediately, which read as a search/network failure one layer
+         up in dining_providers.dart until this was traced to its real cause. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <!-- Health Connect read permissions — one per metric health_providers.dart
          actually requests (see HealthKitHealthProvider._types). -->

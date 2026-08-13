@@ -7,6 +7,7 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/util/iso_day.dart';
+import '../../../core/util/units.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/choice.dart' as choice;
@@ -124,27 +125,31 @@ class ProfileEditScreen extends ConsumerWidget {
             children: [
               choice.Stepper(
                 label: 'Height',
-                unit: 'cm',
-                value: profile.heightCm,
-                min: 120,
-                max: 220,
-                fallback: 170,
+                unit: '',
+                value: profile.heightCm == null
+                    ? null
+                    : cmToInches(profile.heightCm!).roundToDouble(),
+                min: 47, // 3'11"
+                max: 87, // 7'3"
+                fallback: 67, // 5'7"
+                formatValue: formatFeetInches,
                 onChanged: (value) => notifier.setBodyComposition(
-                  heightCm: value,
+                  heightCm: inchesToCm(value),
                   weightKg: profile.weightKg,
                 ),
               ),
               choice.Stepper(
                 label: 'Weight',
-                unit: 'kg',
-                value: profile.weightKg,
-                min: 35,
-                max: 200,
-                step: 0.5,
-                fallback: 70,
+                unit: 'lb',
+                value: profile.weightKg == null
+                    ? null
+                    : kgToLb(profile.weightKg!).roundToDouble(),
+                min: 75,
+                max: 440,
+                fallback: 154,
                 onChanged: (value) => notifier.setBodyComposition(
                   heightCm: profile.heightCm,
-                  weightKg: value,
+                  weightKg: lbToKg(value),
                 ),
               ),
               choice.Stepper(

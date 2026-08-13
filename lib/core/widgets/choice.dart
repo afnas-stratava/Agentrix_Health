@@ -225,6 +225,7 @@ class Stepper extends StatelessWidget {
     required this.max,
     this.step = 1,
     this.fallback,
+    this.formatValue,
   });
 
   final String label;
@@ -240,6 +241,11 @@ class Stepper extends StatelessWidget {
   final double step;
   final double? fallback;
 
+  /// Overrides the default "172" / "32.5" rendering — e.g. height in feet and
+  /// inches, which reads as "5'10"" rather than a bare number. [unit] is
+  /// typically empty when this is set, since the format already carries it.
+  final String Function(double value)? formatValue;
+
   void _nudge(double delta) {
     final current = value ?? fallback ?? min;
     final next = (current + delta).clamp(min, max);
@@ -251,6 +257,8 @@ class Stepper extends StatelessWidget {
   Widget build(BuildContext context) {
     final display = value == null
         ? '—'
+        : formatValue != null
+        ? formatValue!(value!)
         : (value! == value!.roundToDouble()
               ? '${value!.round()}'
               : value!.toStringAsFixed(1));

@@ -1,3 +1,4 @@
+import '../../core/util/units.dart';
 import '../../domain/entities/health/metric_key.dart';
 import '../../domain/entities/insights/readiness.dart';
 import '../../domain/entities/labs/biomarker.dart';
@@ -331,8 +332,8 @@ String _goalReply(HealthAssistantContext context) {
     final delta = weightKg - targetKg;
     if (delta.abs() >= 0.5) {
       buffer.write(
-        ' You are logged at ${weightKg.toStringAsFixed(1)}kg against a '
-        '${targetKg.toStringAsFixed(1)}kg target.',
+        ' You are logged at ${kgToLb(weightKg).round()}lb against a '
+        '${kgToLb(targetKg).round()}lb target.',
       );
     }
   }

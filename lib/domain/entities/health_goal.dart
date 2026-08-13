@@ -14,7 +14,7 @@ enum HealthGoal {
   };
 
   String get hint => switch (this) {
-    HealthGoal.loseWeight => 'A moderate deficit — about 0.5 kg a week',
+    HealthGoal.loseWeight => 'A moderate deficit — about 1 lb a week',
     HealthGoal.buildMuscle => 'A small surplus with a high protein floor',
     HealthGoal.manageCondition => 'Targets shaped around the conditions you log',
     HealthGoal.generalWellness => 'Maintain weight, optimise sleep and energy',
