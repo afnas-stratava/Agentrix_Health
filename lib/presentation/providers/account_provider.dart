@@ -1,24 +1,23 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/auth/social_sign_in.dart';
-import 'auth_providers.dart';
-import 'repository_providers.dart';
 import 'user_profile_provider.dart';
 
 final socialSignInProvider = Provider<SocialSignIn>((ref) => SocialSignIn());
 
 /// How the current session was established.
 enum SessionKind {
-  /// No Firebase user at all — misconfigured project, or offline first run.
+  /// No session at all.
   none,
 
-  /// The bootstrap uid every install gets. Data is real but unrecoverable if
-  /// the app is deleted.
+  /// The default state every install starts in. No backend in this build, so
+  /// this never actually reaches a server — it exists so the UI has the same
+  /// three-state gate (none / anonymous / account) a real auth backend uses.
   anonymous,
 
-  /// Signed in with Apple or Google.
+  /// "Signed in" via [AccountController.signIn] — simulated locally, no
+  /// Google/Apple/Firebase call actually happens. See `social_sign_in.dart`.
   account,
 }
 
@@ -37,44 +36,39 @@ class AccountStatus {
   final String? displayName;
   final String? photoUrl;
 
-  /// e.g. `apple.com`, `google.com`. A user can have both after linking.
+  /// e.g. `apple.com`, `google.com`.
   final List<String> providerIds;
 
   bool get isAccount => kind == SessionKind.account;
 
-  /// What to call the account in the UI when there is no email — Apple users
-  /// who hid their address have a relay address, but users who declined the
-  /// email scope entirely have nothing.
+  /// What to call the account in the UI when there is no email.
   String get label => email ?? displayName ?? 'Signed in';
 }
 
-final accountStatusProvider = Provider<AccountStatus>((ref) {
-  final user = ref.watch(authStateChangesProvider).valueOrNull;
-  if (user == null) return const AccountStatus(kind: SessionKind.none);
+/// Local session state. No backend in this build — every launch starts
+/// anonymous, and [AccountController] moves it to `account` by simulating a
+/// sign-in rather than calling a real identity provider.
+final _sessionProvider = StateProvider<AccountStatus>(
+  (ref) => const AccountStatus(kind: SessionKind.anonymous),
+);
 
-  return AccountStatus(
-    kind: user.isAnonymous ? SessionKind.anonymous : SessionKind.account,
-    email: user.email,
-    displayName: user.displayName,
-    photoUrl: user.photoURL,
-    providerIds: user.providerData.map((p) => p.providerId).toList(),
-  );
-});
+final accountStatusProvider = Provider<AccountStatus>(
+  (ref) => ref.watch(_sessionProvider),
+);
 
 /// Sign-in, sign-out and account deletion.
 ///
 /// The state is the in-flight operation, so a screen can disable its buttons
-/// and surface an error without owning any of this itself.
+/// and surface an error without owning any of this itself. No backend in this
+/// build: every method below only touches local state — see
+/// `social_sign_in.dart` for the simulated provider handshake.
 class AccountController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
-  FirebaseAuth get _auth => ref.read(firebaseAuthProvider);
-
-  /// Runs the provider sheet, then attaches the result to the current session.
-  ///
-  /// Returns false when the user backed out, so the caller can distinguish
-  /// "cancelled" from "failed" without inspecting the error.
+  /// Runs the (simulated) provider sheet and adopts the result as the
+  /// session. Returns false when the user backed out, so the caller can
+  /// distinguish "cancelled" from "failed" without inspecting the error.
   Future<bool> signIn(SocialProvider provider) async {
     state = const AsyncLoading();
 
@@ -85,14 +79,17 @@ class AccountController extends AsyncNotifier<void> {
         SocialProvider.google => await social.google(),
       };
 
-      final user = await _attach(identity.credential);
+      ref.read(_sessionProvider.notifier).state = AccountStatus(
+        kind: SessionKind.account,
+        email: identity.email,
+        displayName: identity.displayName,
+        photoUrl: identity.photoUrl,
+        providerIds: [
+          provider == SocialProvider.apple ? 'apple.com' : 'google.com',
+        ],
+      );
 
-      // The uid may have just changed — signing into an account that already
-      // exists abandons the anonymous one — so the profile in memory belongs
-      // to the wrong user until this re-read completes.
-      await ref.read(userProfileProvider.notifier).hydrate();
-
-      await _adoptProfileDetails(user, identity);
+      _adoptProfileDetails(identity);
 
       state = const AsyncData(null);
       return true;
@@ -105,177 +102,62 @@ class AccountController extends AsyncNotifier<void> {
     }
   }
 
-  /// Upgrades the anonymous session in place where possible.
-  ///
-  /// `linkWithCredential` *keeps the uid*, so everything already written under
-  /// `health_profiles/{uid}` carries over with no migration. Only when that
-  /// Apple ID or Google account is already attached to a different Firebase
-  /// user — a reinstall, or a second device — is there nothing to preserve, and
-  /// the existing account wins over the throwaway anonymous one.
-  Future<User> _attach(AuthCredential credential) async {
-    final current = _auth.currentUser;
-
-    if (current != null && current.isAnonymous) {
-      try {
-        final result = await current.linkWithCredential(credential);
-        return result.user!;
-      } on FirebaseAuthException catch (error) {
-        const collisions = {
-          'credential-already-in-use',
-          'email-already-in-use',
-          'provider-already-linked',
-        };
-        if (!collisions.contains(error.code)) rethrow;
-
-        // Firebase hands back a usable credential on collision; prefer it, as
-        // one-time tokens (Apple's) cannot be replayed.
-        final result = await _auth.signInWithCredential(
-          error.credential ?? credential,
-        );
-        return result.user!;
-      }
-    }
-
-    final result = await _auth.signInWithCredential(credential);
-    return result.user!;
-  }
-
   /// Writes through anything the provider told us that the profile lacks.
-  ///
-  /// Apple gives the name on the first authorization only, so "later" does not
-  /// exist — if the profile has no name yet, this is the one chance to fill it.
-  /// Apple never gives a photo at all; Google gives one every sign-in.
-  Future<void> _adoptProfileDetails(User user, SocialIdentity identity) async {
+  void _adoptProfileDetails(SocialIdentity identity) {
     final name = identity.displayName;
-    if (name != null && name.isNotEmpty) {
-      if ((user.displayName ?? '').isEmpty) {
-        try {
-          await user.updateDisplayName(name);
-        } catch (error) {
-          debugPrint('Could not set displayName: $error');
-        }
-      }
-
-      if (ref.read(userProfileProvider).name.trim().isEmpty) {
-        ref.read(userProfileProvider.notifier).setName(name);
-      }
+    if (name != null &&
+        name.isNotEmpty &&
+        ref.read(userProfileProvider).name.trim().isEmpty) {
+      ref.read(userProfileProvider.notifier).setName(name);
     }
 
     final photoUrl = identity.photoUrl;
-    if (photoUrl != null && photoUrl.isNotEmpty) {
-      if ((user.photoURL ?? '').isEmpty) {
-        try {
-          await user.updatePhotoURL(photoUrl);
-        } catch (error) {
-          debugPrint('Could not set photoURL: $error');
-        }
-      }
-
-      if ((ref.read(userProfileProvider).photoUrl ?? '').isEmpty) {
-        ref.read(userProfileProvider.notifier).setPhotoUrl(photoUrl);
-      }
+    if (photoUrl != null &&
+        photoUrl.isNotEmpty &&
+        (ref.read(userProfileProvider).photoUrl ?? '').isEmpty) {
+      ref.read(userProfileProvider.notifier).setPhotoUrl(photoUrl);
     }
   }
 
   /// Ends the session and returns the app to a signed-out state.
   Future<void> signOut() async {
     state = const AsyncLoading();
-    try {
-      await ref.read(socialSignInProvider).signOut();
-      await _auth.signOut();
-      await _restoreAnonymousSession();
+    await ref.read(socialSignInProvider).signOut();
 
-      // Clearing the profile is not cosmetic. It stays in memory across a sign
-      // out, and the next debounced write would persist it against the *new*
-      // anonymous uid — which the next person to sign in on this phone then
-      // links onto, inheriting a stranger's name, age and conditions. The
-      // signed-out user's own document is untouched and comes back when they
-      // sign in again.
-      ref.read(userProfileProvider.notifier).reset();
+    // Clearing the profile is not cosmetic: it stays in memory across a sign
+    // out, and the next write would persist it as if the next person to use
+    // this device were still the one who just signed out.
+    ref.read(userProfileProvider.notifier).reset();
+    ref.read(_sessionProvider.notifier).state = const AccountStatus(
+      kind: SessionKind.anonymous,
+    );
 
-      state = const AsyncData(null);
-    } catch (error, stack) {
-      state = AsyncError(error, stack);
-    }
+    state = const AsyncData(null);
   }
 
-  /// Puts the session back on an anonymous uid, if the project allows one.
+  /// Deletes the (simulated) account and everything written under it.
   ///
-  /// Best-effort by design. Anonymous auth is a *convenience* here, not a
-  /// requirement: it keeps write paths alive between sessions and is what an
-  /// existing install links its history onto. A project with the provider
-  /// switched off throws `admin-restricted-operation`, and the correct outcome
-  /// there is simply no user — which the sign-in gate already blocks on, the
-  /// same as it blocks on an anonymous one. Letting this throw would instead
-  /// leave the caller in an error state after a sign-out that had, in fact,
-  /// succeeded.
-  Future<void> _restoreAnonymousSession() async {
-    try {
-      await _auth.signInAnonymously();
-    } on FirebaseAuthException catch (error) {
-      if (error.code != 'admin-restricted-operation' &&
-          error.code != 'operation-not-allowed') {
-        rethrow;
-      }
-      debugPrint('Anonymous auth is disabled; staying signed out.');
-    }
-  }
-
-  /// Deletes the Firebase user and the cloud copy of their profile.
-  ///
-  /// Required by App Store guideline 5.1.1(v): an app that creates accounts has
-  /// to let them be deleted from inside the app. Local data is the caller's to
-  /// clear — this only removes what left the device.
-  ///
-  /// Firebase refuses to delete a user whose sign-in is more than a few minutes
-  /// old, so [reauthenticate] runs the provider sheet again on demand.
-  /// Returns false when nothing was deleted — the re-auth sheet was dismissed,
-  /// or the delete failed. The caller must not clear local data on a false.
+  /// Kept `async` and shaped like the real flow it replaces — a future
+  /// backend re-adds the re-auth branch here without touching callers.
   Future<bool> deleteAccount({
     required Future<SocialIdentity?> Function() reauthenticate,
   }) async {
     state = const AsyncLoading();
-
-    try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        state = const AsyncData(null);
-        return false;
-      }
-
-      // Delete the document before the user: once the user is gone the rules
-      // reject the write, and the profile would be stranded in Firestore.
-      await ref.read(userProfileRepositoryProvider).delete(user.uid);
-
-      try {
-        await user.delete();
-      } on FirebaseAuthException catch (error) {
-        if (error.code != 'requires-recent-login') rethrow;
-
-        final identity = await reauthenticate();
-        if (identity == null) {
-          state = const AsyncData(null);
-          return false;
-        }
-        await user.reauthenticateWithCredential(identity.credential);
-        await user.delete();
-      }
-
-      await ref.read(socialSignInProvider).signOut();
-      await _restoreAnonymousSession();
-      state = const AsyncData(null);
-      return true;
-    } catch (error, stack) {
-      state = AsyncError(error, stack);
-      return false;
-    }
+    ref.read(userProfileProvider.notifier).reset();
+    ref.read(_sessionProvider.notifier).state = const AccountStatus(
+      kind: SessionKind.anonymous,
+    );
+    state = const AsyncData(null);
+    return true;
   }
 }
 
 final accountControllerProvider =
     AsyncNotifierProvider<AccountController, void>(AccountController.new);
 
-/// Turns a Firebase error into something worth showing a user.
+/// Turns a Firebase error into something worth showing a user. No backend in
+/// this build ever throws one of these, but the mapping is kept so a real
+/// auth backend can reuse it unmodified.
 String describeAuthError(Object error) {
   if (error is SignInNotConfigured) return error.message;
 

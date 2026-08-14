@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/repositories/firestore_user_profile_repository.dart';
 import '../../data/repositories/mock_blood_test_repository.dart';
 import '../../data/repositories/mock_brief_repository.dart';
 import '../../data/repositories/mock_cycle_repository.dart';
 import '../../data/repositories/mock_daily_stats_repository.dart';
 import '../../data/repositories/mock_health_app_repository.dart';
 import '../../data/repositories/mock_meal_repository.dart';
+import '../../data/repositories/prefs_user_profile_repository.dart';
 import '../../domain/repositories/blood_test_repository.dart';
 import '../../domain/repositories/brief_repository.dart';
 import '../../domain/repositories/cycle_repository.dart';
@@ -44,5 +44,5 @@ final dailyStatsRepositoryProvider = Provider<DailyStatsRepository>(
 );
 
 final userProfileRepositoryProvider = Provider<UserProfileRepository>(
-  (ref) => FirestoreUserProfileRepository(),
+  (ref) => PrefsUserProfileRepository(),
 );

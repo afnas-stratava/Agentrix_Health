@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/util/iso_day.dart';
-import '../../data/health/healthkit_health_provider.dart';
 import '../../data/health/synthetic_health_provider.dart';
 import '../../domain/entities/health/daily_snapshot.dart';
 import '../../domain/entities/health/metric_key.dart';
@@ -63,50 +62,23 @@ final telemetrySourceProvider = StateProvider<TelemetrySource>(
   (ref) => TelemetrySource.synthetic,
 );
 
-/// Resolves the platform provider when one is usable, and falls back to the
-/// synthetic series otherwise.
-///
-/// The fallback is not a failure mode, it is the development path: the simulator
-/// has no Health store worth reading, so a build that only worked on a paired
-/// device would be undemoable. [telemetrySourceProvider] records which one won so
-/// the UI can label synthetic data as sample data rather than implying a watch.
-final healthProviderInstance = FutureProvider<HealthProvider>((ref) async {
-  const synthetic = SyntheticHealthProvider();
+/// No backend in this build: always the deterministic synthetic series,
+/// never `HealthKitHealthProvider`. [telemetrySourceProvider] still labels it
+/// as sample data — that framing was never conditional on a real connection
+/// existing, only on whether one *could* exist, so no UI copy needed to
+/// change. A real backend restores the platform/synthetic fallback this
+/// replaced.
+final healthProviderInstance = FutureProvider<HealthProvider>(
+  (ref) async => const SyntheticHealthProvider(),
+);
 
-  if (kIsWeb) return synthetic;
-
-  final platform = HealthKitHealthProvider();
-  if (!await _orFallback(platform.isAvailable, false)) return synthetic;
-
-  final permission = await _orFallback(
-    platform.getPermissionState,
-    HealthPermissionState.unavailable,
-  );
-  // `undetermined` is the normal iOS answer even after a grant — it refuses to
-  // reveal read authorization — so treat anything short of an outright denial as
-  // worth attempting, and let the empty-series check below decide.
-  if (permission == HealthPermissionState.denied ||
-      permission == HealthPermissionState.unavailable) {
-    return synthetic;
-  }
-
-  return platform;
-});
-
-/// Asks for Health permission, then re-resolves the provider.
-///
-/// Returns the state the user chose, so the connect screen can say what
-/// happened rather than silently showing the same button.
+/// Simulates granting Health access — no real Health Connect/HealthKit call —
+/// so the permissions screen's button and copy still behave like a real grant.
 Future<HealthPermissionState> requestHealthAccess(WidgetRef ref) async {
-  final platform = HealthKitHealthProvider();
-  if (!await platform.isAvailable()) {
-    return HealthPermissionState.unavailable;
-  }
-
-  final result = await platform.requestAuthorization();
+  await Future<void>.delayed(const Duration(milliseconds: 400));
   ref.invalidate(healthProviderInstance);
   ref.invalidate(healthSeriesProvider);
-  return result;
+  return HealthPermissionState.granted;
 }
 
 /// When the series in hand was fetched. Mirrors `lastSyncedAt` on the RN health

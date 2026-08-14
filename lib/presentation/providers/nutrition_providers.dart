@@ -1,4 +1,3 @@
-import 'package:agentrix_health/core/config/secrets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/util/iso_day.dart';
@@ -21,15 +20,10 @@ final mealLogRepositoryProvider = Provider<MealLogRepository>(
   (ref) => PrefsMealLogRepository(),
 );
 
-/// Reads meal photos, or null when no key is configured.
-///
-/// Null rather than a no-op implementation on purpose: the log screen checks
-/// for it and skips the whole photo-reading affordance, so an unconfigured
-/// build never shows a spinner for a call it cannot make.
-final mealVisionProvider = Provider<GeminiMealVision?>((ref) {
-  const vision = GeminiMealVision(apiKey: geminiApiKey);
-  return vision.isConfigured ? vision : null;
-});
+/// No backend in this build: always null. The log screen already treats null
+/// as "no photo-reading affordance" — the same behavior an unconfigured
+/// Gemini key produced — so nothing downstream needed to change.
+final mealVisionProvider = Provider<GeminiMealVision?>((ref) => null);
 
 /// The food log.
 ///

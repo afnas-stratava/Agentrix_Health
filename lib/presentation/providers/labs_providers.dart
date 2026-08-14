@@ -1,7 +1,5 @@
-import 'package:agentrix_health/core/config/secrets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/labs/gemini_lab_parser.dart';
 import '../../data/repositories/prefs_lab_repository.dart';
 import '../../domain/entities/labs/lab_report.dart';
 import '../../domain/repositories/lab_repository.dart';
@@ -12,17 +10,10 @@ final labRepositoryProvider = Provider<LabRepository>(
   (ref) => PrefsLabRepository(),
 );
 
-/// Gemini reads the document; [LocalLabParser] is what answers when there is
-/// no key configured, the network is down, or the call fails — the same
-/// primary/fallback shape the health assistant chat uses.
-final labParserProvider = Provider<LabParser>((ref) {
-  const gemini = GeminiLabParser(apiKey: geminiApiKey);
-  if (!gemini.isConfigured) return const LocalLabParser();
-  return const FallbackLabParser(
-    primary: gemini,
-    fallback: LocalLabParser(),
-  );
-});
+/// No backend in this build: always the local, rule-based parser — Gemini's
+/// primary/fallback pairing this replaced returns here when a real backend
+/// comes back.
+final labParserProvider = Provider<LabParser>((ref) => const LocalLabParser());
 
 class LabsState {
   const LabsState({

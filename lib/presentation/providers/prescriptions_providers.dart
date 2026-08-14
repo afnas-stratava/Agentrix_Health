@@ -1,7 +1,5 @@
-import 'package:agentrix_health/core/config/secrets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/prescriptions/gemini_prescription_parser.dart';
 import '../../data/repositories/prefs_prescription_repository.dart';
 import '../../domain/entities/prescriptions/prescription.dart';
 import '../../domain/repositories/prescription_repository.dart';
@@ -14,14 +12,10 @@ final prescriptionRepositoryProvider = Provider<PrescriptionRepository>(
   (ref) => PrefsPrescriptionRepository(),
 );
 
-final prescriptionParserProvider = Provider<PrescriptionParser>((ref) {
-  const gemini = GeminiPrescriptionParser(apiKey: geminiApiKey);
-  if (!gemini.isConfigured) return const LocalPrescriptionParser();
-  return const FallbackPrescriptionParser(
-    primary: gemini,
-    fallback: LocalPrescriptionParser(),
-  );
-});
+/// No backend in this build: always the local, rule-based parser.
+final prescriptionParserProvider = Provider<PrescriptionParser>(
+  (ref) => const LocalPrescriptionParser(),
+);
 
 class PrescriptionsState {
   const PrescriptionsState({

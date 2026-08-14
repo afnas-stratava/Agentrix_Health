@@ -1,19 +1,11 @@
-import 'package:agentrix_health/core/config/secrets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/chat/gemini_chat_service.dart';
 import '../../domain/entities/chat/chat_message.dart';
 import '../../features/chat/health_assistant.dart';
 import 'health_providers.dart';
 import 'labs_providers.dart';
 import 'nutrition_providers.dart';
 import 'user_profile_provider.dart';
-
-/// Held behind a provider so tests (and a future settings screen) can
-/// override the key without touching [ChatNotifier].
-final geminiChatServiceProvider = Provider<GeminiChatService>(
-  (ref) => const GeminiChatService(apiKey: geminiApiKey),
-);
 
 class ChatState {
   const ChatState({required this.messages, this.isTyping = false});
@@ -95,31 +87,14 @@ class ChatNotifier extends Notifier<ChatState> {
     );
   }
 
-  /// Gemini is the primary voice; the local rule-based engine is what keeps
-  /// the assistant answering when there is no key configured, the network is
-  /// down, or the call errors or comes back empty — the same "never let one
-  /// dependency freeze the screen" rule the health telemetry providers follow.
+  /// No backend in this build: always the local rule-based engine. Gemini's
+  /// primary/fallback pairing this replaced returns here when a real backend
+  /// comes back.
   Future<String> _reply(
     String message,
     List<ChatMessage> history,
     HealthAssistantContext context,
-  ) async {
-    final gemini = ref.read(geminiChatServiceProvider);
-    if (gemini.isConfigured) {
-      try {
-        return await gemini
-            .reply(
-              systemPrompt: buildHealthAssistantSystemPrompt(context),
-              history: history,
-              message: message,
-            )
-            .timeout(const Duration(seconds: 15));
-      } catch (_) {
-        // Fall through to the local engine below.
-      }
-    }
-    return answerHealthQuestion(message, context);
-  }
+  ) async => answerHealthQuestion(message, context);
 }
 
 final chatProvider = NotifierProvider<ChatNotifier, ChatState>(
