@@ -18,7 +18,10 @@ class SignInButtons extends ConsumerWidget {
   const SignInButtons({super.key, this.onSignedIn});
 
   /// Called only on a successful sign-in — not on cancel, not on failure.
-  final VoidCallback? onSignedIn;
+  /// `onboardingComplete` says whether *this* account already finished
+  /// onboarding elsewhere, for callers (the onboarding account step) that
+  /// need to skip re-running it.
+  final void Function(bool onboardingComplete)? onSignedIn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,10 +29,10 @@ class SignInButtons extends ConsumerWidget {
     final busy = state.isLoading;
 
     Future<void> run(SocialProvider provider) async {
-      final signedIn = await ref
+      final result = await ref
           .read(accountControllerProvider.notifier)
           .signIn(provider);
-      if (signedIn) onSignedIn?.call();
+      if (result.success) onSignedIn?.call(result.onboardingComplete);
     }
 
     return Column(

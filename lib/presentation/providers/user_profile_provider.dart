@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
+import '../../core/config/api_endpoints.dart';
 import '../../domain/entities/allergy.dart';
 import '../../domain/entities/cuisine_preference.dart';
 import '../../domain/entities/gender.dart';
@@ -15,10 +18,18 @@ import 'repository_providers.dart';
 
 class UserProfileNotifier extends Notifier<UserProfile> {
   Timer? _persistDebounce;
+  Timer? _bodySyncDebounce;
+  Timer? _goalsSyncDebounce;
+  Timer? _dietSyncDebounce;
 
   @override
   UserProfile build() {
-    ref.onDispose(() => _persistDebounce?.cancel());
+    ref.onDispose(() {
+      _persistDebounce?.cancel();
+      _bodySyncDebounce?.cancel();
+      _goalsSyncDebounce?.cancel();
+      _dietSyncDebounce?.cancel();
+    });
     unawaited(hydrate());
     return UserProfile.initial();
   }
@@ -65,6 +76,103 @@ class UserProfileNotifier extends Notifier<UserProfile> {
     _persistDebounce = Timer(const Duration(milliseconds: 500), _persistNow);
   }
 
+  /// Write-behind backup of height/weight/age/activity level to the FastAPI
+  /// backend (`PATCH /users/me/body`, see `app/api/users.py`) — the on-device
+  /// copy above is the source of truth for reads, so a flaky connection here
+  /// must not block onboarding. Silently drops if there's no signed-in
+  /// session yet. Debounced separately from [_persistDebounced] so the three
+  /// setters `body_screen.dart` fires back-to-back on Continue collapse into
+  /// one request instead of three.
+  void _syncBodyDebounced() {
+    _bodySyncDebounce?.cancel();
+    _bodySyncDebounce = Timer(const Duration(milliseconds: 500), _syncBody);
+  }
+
+  Future<void> _syncBody() async {
+    final idToken = ref.read(googleIdTokenProvider);
+    if (idToken == null) return;
+
+    try {
+      await http
+          .patch(
+            ApiEndpoints.updateBody,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'id_token': idToken,
+              'height_cm': state.heightCm,
+              'weight_kg': state.weightKg,
+              'age': state.ageYears,
+              'activity_level': state.activityLevel.wireName,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (error) {
+      debugPrint('Could not sync body composition to backend: $error');
+    }
+  }
+
+  /// Same write-behind pattern as [_syncBodyDebounced], covering the goal(s),
+  /// target weight and managed conditions from `goals_screen.dart`
+  /// (`PATCH /users/me/goals`).
+  void _syncGoalsDebounced() {
+    _goalsSyncDebounce?.cancel();
+    _goalsSyncDebounce = Timer(const Duration(milliseconds: 500), _syncGoals);
+  }
+
+  Future<void> _syncGoals() async {
+    final idToken = ref.read(googleIdTokenProvider);
+    if (idToken == null) return;
+
+    try {
+      await http
+          .patch(
+            ApiEndpoints.updateGoals,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'id_token': idToken,
+              'goals': state.goals.map((g) => g.name).toList(),
+              'target_weight_kg': state.targetWeightKg,
+              'conditions': state.conditions.map((c) => c.wireName).toList(),
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (error) {
+      debugPrint('Could not sync goals to backend: $error');
+    }
+  }
+
+  /// Same write-behind pattern as [_syncBodyDebounced], covering the diet
+  /// pattern, allergies, preferences and ranked cuisines from
+  /// `diet_screen.dart` (`PATCH /users/me/diet`).
+  void _syncDietDebounced() {
+    _dietSyncDebounce?.cancel();
+    _dietSyncDebounce = Timer(const Duration(milliseconds: 500), _syncDiet);
+  }
+
+  Future<void> _syncDiet() async {
+    final idToken = ref.read(googleIdTokenProvider);
+    if (idToken == null) return;
+
+    try {
+      await http
+          .patch(
+            ApiEndpoints.updateDiet,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'id_token': idToken,
+              'diet_pattern': state.dietPattern.wireName,
+              'allergies': state.allergies.map((a) => a.wireName).toList(),
+              'restrictions': state.restrictions.map((r) => r.wireName).toList(),
+              // Order carries the rank — see toggleCuisine.
+              'cuisines': state.cuisines.map((c) => c.name).toList(),
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (error) {
+      debugPrint('Could not sync diet to backend: $error');
+    }
+  }
+
   void setName(String name) {
     state = state.copyWith(name: name);
     _persistDebounced();
@@ -73,6 +181,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
   void setAge(String age) {
     state = state.copyWith(age: age);
     _persistDebounced();
+    _syncBodyDebounced();
   }
 
   void setGender(Gender gender) {
@@ -83,6 +192,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
   void setGoal(HealthGoal goal) {
     state = state.copyWith(goals: {goal});
     _persistNow();
+    _syncGoalsDebounced();
   }
 
   void setGoals(Set<HealthGoal> goals) {
@@ -90,6 +200,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
       goals: goals.isEmpty ? {HealthGoal.generalWellness} : goals,
     );
     _persistNow();
+    _syncGoalsDebounced();
   }
 
   void toggleGoal(HealthGoal goal) {
@@ -103,6 +214,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
     }
     state = state.copyWith(goals: next);
     _persistNow();
+    _syncGoalsDebounced();
   }
 
   void setPhotoUrl(String url) {
@@ -118,6 +230,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
         : cuisines.add(cuisine);
     state = state.copyWith(cuisines: cuisines);
     _persistNow();
+    _syncDietDebounced();
   }
 
   void toggleAllergy(Allergy allergy) {
@@ -127,6 +240,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
         : allergies.add(allergy);
     state = state.copyWith(allergies: allergies);
     _persistNow();
+    _syncDietDebounced();
   }
 
   void addCustomRestriction(String text) {
@@ -154,21 +268,25 @@ class UserProfileNotifier extends Notifier<UserProfile> {
   void setBodyComposition({double? heightCm, double? weightKg}) {
     state = state.copyWith(heightCm: heightCm, weightKg: weightKg);
     _persistDebounced();
+    _syncBodyDebounced();
   }
 
   void setTargetWeight(double? weightKg) {
     state = state.copyWith(targetWeightKg: weightKg);
     _persistDebounced();
+    _syncGoalsDebounced();
   }
 
   void setActivityLevel(ActivityLevel level) {
     state = state.copyWith(activityLevel: level);
     _persistNow();
+    _syncBodyDebounced();
   }
 
   void setDietPattern(DietPattern pattern) {
     state = state.copyWith(dietPattern: pattern);
     _persistNow();
+    _syncDietDebounced();
   }
 
   void toggleRestriction(Restriction restriction) {
@@ -178,6 +296,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
         : next.add(restriction);
     state = state.copyWith(restrictions: next);
     _persistNow();
+    _syncDietDebounced();
   }
 
   void toggleCondition(Condition condition) {
@@ -185,6 +304,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
     next.contains(condition) ? next.remove(condition) : next.add(condition);
     state = state.copyWith(conditions: next);
     _persistNow();
+    _syncGoalsDebounced();
   }
 
   /// Awaitable, unlike the fire-and-forget setters: logging a period start
@@ -197,6 +317,9 @@ class UserProfileNotifier extends Notifier<UserProfile> {
 
   void reset() {
     _persistDebounce?.cancel();
+    _bodySyncDebounce?.cancel();
+    _goalsSyncDebounce?.cancel();
+    _dietSyncDebounce?.cancel();
     state = UserProfile.initial();
     _persistNow();
   }

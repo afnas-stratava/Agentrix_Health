@@ -68,6 +68,10 @@ dependencies:
   crypto: ^3.0.7
   google_generative_ai: ^0.4.7
 
+  # Keystore/Keychain-backed storage for the signed-in session, so it
+  # survives a restart without sitting in plaintext SharedPreferences.
+  flutter_secure_storage: ^9.2.4
+
 # Build workaround, not a preference — remove once Xcode ships the iOS 26.1 SDK.
 #
 # `health` pulls `device_info_plus: ^12.1.0`, and 12.4.0 calls

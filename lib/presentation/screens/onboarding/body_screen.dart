@@ -70,7 +70,7 @@ class _BodyScreenState extends ConsumerState<BodyScreen> {
       title: 'A few numbers about you',
       intro:
           'These four figures are what your calorie, protein and hydration '
-          'targets are calculated from. They stay on this device.',
+          'targets are calculated from. They\'re saved to your account.',
       canContinue: canContinue,
       blockedHint:
           'Set all three to continue — without them we cannot compute '

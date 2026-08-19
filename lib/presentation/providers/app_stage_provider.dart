@@ -1,6 +1,13 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/config/api_endpoints.dart';
+import 'auth_providers.dart';
 
 /// Whether onboarding was already finished on this device, resolved in
 /// `main()` *before* `runApp()` and overridden via `ProviderScope(overrides:
@@ -103,6 +110,29 @@ class AppStageNotifier extends Notifier<AppStage> {
       await prefs.setBool(onboardingCompleteKey, true);
     } catch (error) {
       debugPrint('AppStageNotifier: could not save onboarding flag: $error');
+    }
+    unawaited(_syncOnboardingComplete());
+  }
+
+  /// Write-behind backup of the local flag above to the FastAPI backend
+  /// (`PATCH /users/me/onboarding-complete`) — read back on a later
+  /// `/auth/google` so a reinstall or a second device also skips onboarding
+  /// for this account. Best-effort like the other onboarding syncs: a flaky
+  /// connection here must not block reaching the main app.
+  Future<void> _syncOnboardingComplete() async {
+    final idToken = ref.read(googleIdTokenProvider);
+    if (idToken == null) return;
+
+    try {
+      await http
+          .patch(
+            ApiEndpoints.markOnboardingComplete,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({'id_token': idToken}),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (error) {
+      debugPrint('Could not sync onboarding-complete to backend: $error');
     }
   }
 }

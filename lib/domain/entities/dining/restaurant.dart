@@ -1,3 +1,4 @@
+import '../../../core/config/api_endpoints.dart';
 import '../../../core/util/units.dart';
 import '../nutrition/food_definition.dart';
 import '../nutrition/macros.dart';
@@ -98,7 +99,7 @@ class Restaurant {
     final lat = latitude;
     final lon = longitude;
     if (lat == null || lon == null) return null;
-    return 'https://www.google.com/maps/search/?api=1&query=$lat,$lon';
+    return ApiEndpoints.googleMapsSearch(lat: lat, lon: lon);
   }
 }
 

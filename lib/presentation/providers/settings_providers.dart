@@ -2,9 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/config/api_endpoints.dart';
 import '../../features/correlation/engine_context.dart';
+import 'auth_providers.dart';
 
 /// App preferences. Ported from `src/store/settings.store.ts`.
 ///
@@ -118,6 +121,30 @@ class SettingsNotifier extends Notifier<Settings> {
   void setSex(BiologicalSex sex) {
     state = state.copyWith(sex: sex);
     _persist();
+    _syncSex(sex);
+  }
+
+  /// Best-effort — the device copy above is the source of truth for the
+  /// analysis engine, so a flaky connection here must not block onboarding.
+  /// Silently drops if there's no signed-in session yet.
+  Future<void> _syncSex(BiologicalSex sex) async {
+    final idToken = ref.read(googleIdTokenProvider);
+    if (idToken == null) return;
+
+    try {
+      await http
+          .patch(
+            ApiEndpoints.updateBiologicalSex,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'id_token': idToken,
+              'biological_sex': sex.wireName,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (error) {
+      debugPrint('Could not sync biological sex to backend: $error');
+    }
   }
 
   void setAnalysisWindow(AnalysisWindow window) {

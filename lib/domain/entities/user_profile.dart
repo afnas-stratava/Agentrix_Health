@@ -116,6 +116,29 @@ class UserProfile {
         : DietPattern.omnivore;
   }
 
+  /// The wire format shared by every place this profile leaves the app —
+  /// local storage today, the backend sync in `user_profile_provider.dart`.
+  /// Keeping it here means both stay byte-for-byte identical without either
+  /// one importing the other.
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'age': age,
+    'gender': gender.name,
+    'goals': goals.map((g) => g.name).toList(),
+    'cuisines': cuisines.map((c) => c.name).toList(),
+    'allergies': allergies.map((a) => a.name).toList(),
+    'customRestrictions': customRestrictions,
+    'heightCm': heightCm,
+    'weightKg': weightKg,
+    'targetWeightKg': targetWeightKg,
+    'activityLevel': activityLevel.name,
+    'dietPattern': dietPattern.name,
+    'restrictions': restrictions.map((r) => r.name).toList(),
+    'conditions': conditions.map((c) => c.name).toList(),
+    'cycle': cycle.toJson(),
+    'photoUrl': photoUrl,
+  };
+
   UserProfile copyWith({
     String? name,
     String? age,

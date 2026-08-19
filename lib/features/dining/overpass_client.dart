@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/config/api_endpoints.dart';
 import '../../core/config/app_info.dart';
 import '../../domain/entities/dining/restaurant.dart';
 import '../../domain/entities/profile/cuisine.dart';
@@ -40,11 +41,7 @@ class OverpassClient {
   /// All three are the same free, keyless Overpass API, just different
   /// volunteer-run servers — current list per the OSM wiki's public-instance
   /// table.
-  static final List<Uri> _endpoints = [
-    Uri.parse('https://overpass-api.de/api/interpreter'),
-    Uri.parse('https://overpass.private.coffee/api/interpreter'),
-    Uri.parse('https://maps.mail.ru/osm/tools/overpass/api/interpreter'),
-  ];
+  static final List<Uri> _endpoints = ApiEndpoints.overpassMirrors;
 
   static const String _userAgent =
       '${AppInfo.appName}/1.0 (+${AppInfo.supportEmail})';

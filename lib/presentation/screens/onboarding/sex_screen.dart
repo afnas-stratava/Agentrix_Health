@@ -54,8 +54,8 @@ class _SexScreenState extends ConsumerState<SexScreen> {
       title: 'Which reference ranges should we use?',
       intro:
           'Lab reference intervals differ by biological sex. This is only '
-          'used to flag your results correctly — it is stored on your device '
-          'and never sent anywhere.',
+          'used to flag your results correctly — it\'s saved to your '
+          'account.',
       onContinue: () {
         ref.read(settingsProvider.notifier).setSex(selected);
         ref.read(appStageProvider.notifier).next();

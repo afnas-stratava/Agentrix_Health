@@ -44,34 +44,13 @@ class PrefsUserProfileRepository implements UserProfileRepository {
   @override
   Future<void> save(String uid, UserProfile profile) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(_toMap(profile)));
+    await prefs.setString(_key, jsonEncode(profile.toJson()));
   }
 
   @override
   Future<void> delete(String uid) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
-  }
-
-  Map<String, dynamic> _toMap(UserProfile profile) {
-    return {
-      'name': profile.name,
-      'age': profile.age,
-      'gender': profile.gender.name,
-      'goals': profile.goals.map((g) => g.name).toList(),
-      'cuisines': profile.cuisines.map((c) => c.name).toList(),
-      'allergies': profile.allergies.map((a) => a.name).toList(),
-      'customRestrictions': profile.customRestrictions,
-      'heightCm': profile.heightCm,
-      'weightKg': profile.weightKg,
-      'targetWeightKg': profile.targetWeightKg,
-      'activityLevel': profile.activityLevel.name,
-      'dietPattern': profile.dietPattern.name,
-      'restrictions': profile.restrictions.map((r) => r.name).toList(),
-      'conditions': profile.conditions.map((c) => c.name).toList(),
-      'cycle': profile.cycle.toJson(),
-      'photoUrl': profile.photoUrl,
-    };
   }
 
   UserProfile _fromMap(Map<String, dynamic> map) {

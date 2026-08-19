@@ -26,7 +26,14 @@ class AccountScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(accountStatusProvider);
-    final next = ref.read(appStageProvider.notifier).next;
+    final stage = ref.read(appStageProvider.notifier);
+    final next = stage.next;
+
+    // A registered account that already finished onboarding — elsewhere, or
+    // on an earlier install here — skips straight to the main app instead of
+    // re-asking everything it already has an answer for.
+    void afterSignIn(bool onboardingComplete) =>
+        onboardingComplete ? stage.goMain() : next();
 
     if (status.isAccount) {
       return OnboardingScaffold(
@@ -51,7 +58,7 @@ class AccountScreen extends ConsumerWidget {
       canContinue: false,
       blockedHint: 'Choose a sign-in method above to continue.',
       children: [
-        SignInButtons(onSignedIn: next),
+        SignInButtons(onSignedIn: afterSignIn),
         const SizedBox(height: AppSpacing.space6),
         const _PrivacyNote(),
       ],

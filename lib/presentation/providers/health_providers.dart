@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/util/iso_day.dart';
+import '../../data/health/healthkit_health_provider.dart';
 import '../../data/health/synthetic_health_provider.dart';
 import '../../domain/entities/health/daily_snapshot.dart';
 import '../../domain/entities/health/metric_key.dart';
@@ -62,23 +63,38 @@ final telemetrySourceProvider = StateProvider<TelemetrySource>(
   (ref) => TelemetrySource.synthetic,
 );
 
-/// No backend in this build: always the deterministic synthetic series,
-/// never `HealthKitHealthProvider`. [telemetrySourceProvider] still labels it
-/// as sample data — that framing was never conditional on a real connection
-/// existing, only on whether one *could* exist, so no UI copy needed to
-/// change. A real backend restores the platform/synthetic fallback this
-/// replaced.
-final healthProviderInstance = FutureProvider<HealthProvider>(
-  (ref) async => const SyntheticHealthProvider(),
+/// One instance for the app's lifetime — [HealthKitHealthProvider] caches an
+/// async `configure()` call internally, and a fresh instance per rebuild
+/// would repeat that device-id lookup for no reason.
+final _platformHealthProviderProvider = Provider<HealthKitHealthProvider>(
+  (ref) => HealthKitHealthProvider(),
 );
 
-/// Simulates granting Health access — no real Health Connect/HealthKit call —
-/// so the permissions screen's button and copy still behave like a real grant.
+/// The real platform store when Health Connect/HealthKit is present on this
+/// device, the deterministic synthetic series otherwise — simulator, web, or
+/// a device with no Health Connect installed. Not gated on permission state
+/// here: iOS never reveals whether read access was actually granted (see
+/// [HealthKitHealthProvider.getPermissionState]), so [healthSeriesProvider]'s
+/// existing "granted but empty" fallback is what actually handles a denial —
+/// gating twice would just make Android and iOS disagree about which path
+/// to take.
+final healthProviderInstance = FutureProvider<HealthProvider>((ref) async {
+  final platform = ref.read(_platformHealthProviderProvider);
+  return await platform.isAvailable()
+      ? platform
+      : const SyntheticHealthProvider();
+});
+
+/// Runs the real Health Connect/HealthKit permission sheet from the
+/// permissions screen's "Connect" button, then refreshes anything reading
+/// telemetry so a grant takes effect immediately instead of waiting for the
+/// next cold start.
 Future<HealthPermissionState> requestHealthAccess(WidgetRef ref) async {
-  await Future<void>.delayed(const Duration(milliseconds: 400));
+  final platform = ref.read(_platformHealthProviderProvider);
+  final state = await platform.requestAuthorization();
   ref.invalidate(healthProviderInstance);
   ref.invalidate(healthSeriesProvider);
-  return HealthPermissionState.granted;
+  return state;
 }
 
 /// When the series in hand was fetched. Mirrors `lastSyncedAt` on the RN health
