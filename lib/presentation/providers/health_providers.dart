@@ -113,43 +113,24 @@ final healthSeriesProvider = FutureProvider<List<DailySnapshot>>((ref) async {
   // what the React Native build reports in the "Your signals" header.
   final from = addDays(startOfLocalDay(to), -days);
 
-  var series = aggregateDailySnapshots(
-    // A store that never answers is treated exactly like an empty one: the
-    // no-signal check below then falls through to the synthetic series.
+  // A store that never answers (timeout, thrown error) reads as empty rather
+  // than blocking the screen forever — see [_orFallback]. It is *not*
+  // relabelled as synthetic: an empty real query and a failed real query are
+  // both "Health Connect has nothing to show right now", which is the honest
+  // state to render, not a cue to substitute invented numbers.
+  final series = aggregateDailySnapshots(
     await _orFallback(() => provider.fetchRange(from, to), const RawTelemetry()),
     from,
     to,
   );
-  var source = provider.id == 'synthetic'
+  final source = provider.id == 'synthetic'
       ? TelemetrySource.synthetic
       : TelemetrySource.platform;
-
-  // A granted-but-empty Health store is the common case on a device that has
-  // never worn a watch. Showing 35 blank days would suppress readiness, every
-  // tile and the brief's recovery line all at once, so fall back rather than
-  // present an app that looks broken.
-  if (source == TelemetrySource.platform && !_hasAnySignal(series)) {
-    const fallback = SyntheticHealthProvider();
-    series = aggregateDailySnapshots(
-      await fallback.fetchRange(from, to),
-      from,
-      to,
-    );
-    source = TelemetrySource.synthetic;
-  }
 
   ref.read(telemetrySourceProvider.notifier).state = source;
   ref.read(lastSyncedAtProvider.notifier).state = DateTime.now();
   return series;
 });
-
-bool _hasAnySignal(List<DailySnapshot> series) => series.any(
-  (day) =>
-      day.hrv != null ||
-      day.restingHeartRate != null ||
-      day.sleep != null ||
-      day.steps != null,
-);
 
 /// The single context every consumer reads — readiness, the metric tiles and the
 /// correlation engine alike.

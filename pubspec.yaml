@@ -72,6 +72,27 @@ dependencies:
   # survives a restart without sitting in plaintext SharedPreferences.
   flutter_secure_storage: ^9.2.4
 
+  # Hume EVI voice agent (see lib/data/voice, lib/presentation/.../voice_screen.dart).
+  # web_socket_channel talks the EVI protocol directly from the device — audio
+  # never passes through the FastAPI backend, only the short-lived token does.
+  # flutter_sound does both directions (mic capture to a PCM16 stream, and
+  # gapless playback from one) through a single native audio session, which
+  # is the point: two separate plugins each opening their own session is the
+  # usual cause of a voice call's mic and speaker fighting each other.
+  web_socket_channel: ^3.0.1
+  flutter_sound: ^9.28.0
+  permission_handler: ^11.3.1
+  # Only used to quiet flutter_sound's own verbose FS:---> trace logging
+  # (Level.debug by default) — a real dependency of flutter_sound already,
+  # declared directly here rather than relied on transitively.
+  logger: ^2.7.0
+
+  # "Hey Agentrix" wake word (see lib/data/wakeword, presentation/.../
+  # wake_word_provider.dart). Picovoice Porcupine running a custom-trained
+  # keyword model (assets/wake_words/) on-device — no network call, no
+  # generic preprocessing models to ship.
+  porcupine_flutter: ^4.0.0
+
 # Build workaround, not a preference — remove once Xcode ships the iOS 26.1 SDK.
 #
 # `health` pulls `device_info_plus: ^12.1.0`, and 12.4.0 calls
@@ -105,10 +126,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  # "Hey Agentrix" Porcupine keyword models (see porcupine_flutter dependency
+  # above), one per platform — trained via Picovoice Console.
+  assets:
+    - assets/wake_words/Hey-Agentrix_en_android_v4_0_0.ppn
+    - assets/wake_words/Hey-Agentrix_en_ios_v4_0_0.ppn
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

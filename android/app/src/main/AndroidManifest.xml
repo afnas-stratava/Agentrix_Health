@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Steps require Activity Recognition access on Android. -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <!-- Hume EVI voice agent — captures mic audio to stream to the Hume
+         WebSocket. Requested at runtime (permission_handler); this only
+         declares it. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <!-- Nearby-restaurant search (Eat out). The geolocator plugin does not
          inject these itself — omitting them makes every location request
          throw immediately, which read as a search/network failure one layer

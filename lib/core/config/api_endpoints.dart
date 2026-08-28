@@ -64,6 +64,21 @@ abstract final class ApiEndpoints {
   static Uri get markOnboardingComplete =>
       Uri.parse('$backendBaseUrl/users/me/onboarding-complete');
 
+  /// Issues a short-lived Hume EVI access token — see `app/api/voice.py`.
+  /// The Hume API key/secret never leave the backend; this is the only Hume
+  /// credential the app ever sees, and it expires in 30 minutes.
+  static Uri get voiceToken => Uri.parse('$backendBaseUrl/voice/token');
+
+  /// Hume's EVI chat WebSocket. Opened directly from the device — audio never
+  /// passes through `agentrix_backend`, only this token-issuing step does.
+  static Uri humeEviSocket({
+    required String accessToken,
+    required String configId,
+  }) => Uri.parse(
+    'wss://api.hume.ai/v0/evi/chat'
+    '?access_token=$accessToken&config_id=$configId',
+  );
+
   /// OpenStreetMap's Overpass API — nearby restaurants and fast-food places.
   /// See `OverpassClient` for why there are three: no SLA on any one mirror,
   /// so all three are queried concurrently and the first live answer wins.

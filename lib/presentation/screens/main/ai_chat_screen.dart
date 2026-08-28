@@ -8,9 +8,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/screen_back_button.dart';
 import '../../../domain/entities/chat/chat_message.dart';
 import '../../providers/chat_provider.dart';
+import 'main_shell.dart';
+import 'voice_screen.dart';
 
 /// Text chat with the in-app health assistant, reached from the tab bar's
 /// centre action. Mirrors the other pushed screens' shape — a centred
@@ -122,7 +125,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 36),
+              AppButton.icon(
+                leading: const Icon(Icons.mic_none_rounded),
+                backgroundColor: AppColors.surface,
+                onPressed: () => MainShell.push(context, const VoiceScreen()),
+              ),
             ],
           ),
         ),

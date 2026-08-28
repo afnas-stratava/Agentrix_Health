@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_shadows.dart';
 import 'core/theme/app_theme.dart';
+import 'presentation/navigation/app_navigator.dart';
 import 'presentation/providers/app_stage_provider.dart';
 import 'presentation/providers/shared_document_provider.dart';
 import 'presentation/screens/main/main_shell.dart';
@@ -14,6 +15,8 @@ import 'presentation/screens/onboarding/goals_screen.dart';
 import 'presentation/screens/onboarding/permissions_screen.dart';
 import 'presentation/screens/onboarding/sex_screen.dart';
 import 'presentation/screens/onboarding/welcome_screen.dart';
+import 'presentation/widgets/voice/global_voice_button.dart';
+import 'presentation/widgets/voice/wake_word_listener.dart';
 
 class AgentrixHealthApp extends StatelessWidget {
   const AgentrixHealthApp({super.key});
@@ -24,8 +27,30 @@ class AgentrixHealthApp extends StatelessWidget {
       title: 'Agentrix Health',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      // Lets the voice tool dispatcher navigate without a BuildContext of
+      // its own — see `app_navigator.dart`.
+      navigatorKey: AppNavigator.key,
       home: const SharedDocumentWatcher(
-        child: _ResponsiveRoot(child: _AppStageSwitcher()),
+        child: _ResponsiveRoot(
+          // The floating voice control sits *above* the Navigator that
+          // `_AppStageSwitcher`/`MainShell` builds, as a Stack sibling
+          // rather than something inside it — every push/pop only rebuilds
+          // what's inside that Navigator, so this survives all of it
+          // unchanged. Placed here rather than in `MaterialApp.builder` so
+          // it's confined to the phone-frame's own bounds in the desktop/web
+          // mockup, not the full browser window. See `global_voice_button.dart`.
+          child: Stack(
+            children: [
+              _AppStageSwitcher(),
+              GlobalVoiceButton(),
+              // Invisible — see wake_word_listener.dart. Kept as its own
+              // widget rather than folded into GlobalVoiceButton so "reach
+              // the call" and "listen for the wake word" stay independently
+              // understandable and independently removable.
+              WakeWordListener(),
+            ],
+          ),
+        ),
       ),
     );
   }
